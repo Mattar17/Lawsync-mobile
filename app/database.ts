@@ -93,3 +93,57 @@ export async function createCase(caseDetails: CaseT) {
 
   return result.lastInsertRowId;
 }
+
+export async function getCaseById(id: string) {
+  const db = await dbPromise;
+  const result = db.getFirstAsync<CaseT>(
+    `SELECT * FROM cases WHERE case_number = ?`,
+    [id],
+  );
+  return result;
+}
+
+export async function updateCase(id: string, data: CaseT) {
+  const db = await dbPromise;
+
+  return await db.runAsync(
+    `UPDATE cases
+     SET
+       case_year = ?,
+       client_name = ?,
+       client_opponent_name = ?,
+       client_role = ?,
+       client_opponent_role = ?,
+       client_national_id = ?,
+       client_opponent_national_id = ?,
+       latest_court_session_date = ?,
+       next_court_session_date = ?,
+       case_status = ?,
+       case_notes = ?
+     WHERE case_number = ?`,
+    [
+      data.case_year,
+      data.client_name,
+      data.client_opponent_name,
+      data.client_role,
+      data.client_opponent_role,
+      data.client_national_id,
+      data.client_opponent_national_id,
+      data.latest_court_session_date,
+      data.next_court_session_date,
+      data.case_status,
+      data.case_notes,
+      id,
+    ],
+  );
+}
+
+export async function deleteCase(id: string) {
+  const db = await dbPromise;
+  const result = db.runAsync(
+    `DELETE FROM cases
+     WHERE case_number = ?`,
+    [id],
+  );
+  return result;
+}
