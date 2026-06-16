@@ -147,3 +147,5 @@ export async function deleteCase(id: string) {
   );
   return result;
 }
+
+export default getAllCases;

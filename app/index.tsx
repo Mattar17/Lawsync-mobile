@@ -1,4 +1,4 @@
-import { CreateCasesTable, dropTableCases, getAllCases } from "@/app/database";
+import { CreateCasesTable, getAllCases } from "@/app/database";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
@@ -37,7 +37,7 @@ const CaseItem = ({ caseItem }: CaseItemProps) => (
         </Text>
       </View>
       <Text style={styles.caseTitle}>
-        قضية {caseItem.case_number} / {caseItem.case_year}
+        {` قضية ${caseItem.case_number} لسنة ${caseItem.case_year}`}
       </Text>
     </View>
 
@@ -115,12 +115,11 @@ export default function Index() {
         {/* header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.devDeleteBtn}
-            onPress={() => dropTableCases()}
+            style={styles.settingsBtn}
+            onPress={() => router.push("/Settings")}
           >
-            <Feather name="trash" size={14} color="#dc2626" />
+            <Feather name="settings" size={20} color="#374151" />
           </TouchableOpacity>
-
           <Text style={styles.headerTitle}>القضايا</Text>
 
           <TouchableOpacity
@@ -165,7 +164,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
@@ -176,11 +175,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#111827",
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   addBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
     backgroundColor: "#2563eb",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  settingsBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -334,5 +348,18 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 14,
     color: "#9ca3af",
+  },
+  logoContainer: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  logo: {
+    width: 80,
+    height: 80,
   },
 });

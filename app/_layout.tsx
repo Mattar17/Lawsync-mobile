@@ -15,6 +15,10 @@ export default function RootLayout() {
         name="CreateCase"
         options={{ title: "إضافة قضية", headerShown: true }}
       ></Stack.Screen>
+      <Stack.Screen
+        name="Settings"
+        options={{ title: "الإعدادات", headerShown: true }}
+      ></Stack.Screen>
     </Stack>
   );
 }

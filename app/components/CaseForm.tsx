@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
 import {
   Pressable,
@@ -65,6 +64,41 @@ function FieldWrapper({
   );
 }
 
+function RadioGroup({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { label: string; value: string }[];
+}) {
+  return (
+    <View style={styles.radioGroup}>
+      {options.map((option) => {
+        const isActive = value === option.value;
+        return (
+          <TouchableOpacity
+            key={option.value}
+            style={[styles.radioBtn, isActive && styles.radioBtnActive]}
+            onPress={() => onChange(option.value)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.radioBtnText,
+                isActive && styles.radioBtnTextActive,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function CaseForm({
@@ -109,6 +143,11 @@ export default function CaseForm({
       console.log(error);
     }
   };
+
+  const roleOptions = [
+    { label: "مدعي", value: "مدعي" },
+    { label: "مدعى عليه", value: "مدعى عليه" },
+  ];
 
   return (
     <ScrollView
@@ -181,21 +220,11 @@ export default function CaseForm({
         <View style={styles.inCardDivider} />
 
         <FieldWrapper label="الصفة" error={errors.client_role}>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={caseDetails.client_role}
-              onValueChange={(v) => handleChange("client_role", v)}
-              style={styles.picker}
-            >
-              <Picker.Item label="اختر الصفة" value="" color="#9ca3af" />
-              <Picker.Item label="مدعي" value="مدعي" color="#111827" />
-              <Picker.Item
-                label="مدعي عليه"
-                value="مدعي عليه"
-                color="#111827"
-              />
-            </Picker>
-          </View>
+          <RadioGroup
+            value={caseDetails.client_role}
+            onChange={(value) => handleChange("client_role", value)}
+            options={roleOptions}
+          />
         </FieldWrapper>
 
         <View style={styles.inCardDivider} />
@@ -228,21 +257,11 @@ export default function CaseForm({
         <View style={styles.inCardDivider} />
 
         <FieldWrapper label="الصفة" error={errors.client_opponent_role}>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={caseDetails.client_opponent_role}
-              onValueChange={(v) => handleChange("client_opponent_role", v)}
-              style={styles.picker}
-            >
-              <Picker.Item label="اختر الصفة" value="" color="#9ca3af" />
-              <Picker.Item label="مدعي" value="مدعي" color="#111827" />
-              <Picker.Item
-                label="مدعي عليه"
-                value="مدعي عليه"
-                color="#111827"
-              />
-            </Picker>
-          </View>
+          <RadioGroup
+            value={caseDetails.client_opponent_role}
+            onChange={(value) => handleChange("client_opponent_role", value)}
+            options={roleOptions}
+          />
         </FieldWrapper>
 
         <View style={styles.inCardDivider} />
@@ -444,17 +463,37 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9fafb",
     textAlign: "right",
   },
-  pickerContainer: {
+
+  //radio group
+  radioGroup: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  radioBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: "#e5e7eb",
     borderRadius: 8,
     backgroundColor: "#f9fafb",
-    overflow: "hidden",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  picker: {
-    color: "#111827",
-    height: 48,
+  radioBtnActive: {
+    borderColor: "#2563eb",
+    backgroundColor: "#eff6ff",
   },
+  radioBtnText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#6b7280",
+  },
+  radioBtnTextActive: {
+    color: "#2563eb",
+    fontWeight: "700",
+  },
+
   dateBtn: {
     flexDirection: "row",
     alignItems: "center",

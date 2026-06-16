@@ -19,3 +19,4 @@ type CaseT = {
 };
 
 export type { CaseT };
+export default CaseT;

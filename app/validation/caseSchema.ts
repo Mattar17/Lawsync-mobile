@@ -20,15 +20,15 @@ export const caseSchema = z.object({
     .min(4, "اسم الخصم يجب أن يحتوي على 4 أحرف على الأقل")
     .regex(arabicEnglishNameRegex, "اسم الخصم يجب أن يحتوي على حروف فقط"),
 
-  client_role: z.enum(["مدعي", "مدعي عليه"], {
+  client_role: z.enum(["مدعي", "مدعى عليه"], {
     error: () => ({
-      message: "صفة الموكل يجب أن تكون مدعي أو مدعي عليه",
+      message: "صفة الموكل يجب أن تكون مدعي أو مدعى عليه",
     }),
   }),
 
-  client_opponent_role: z.enum(["مدعي", "مدعي عليه"], {
+  client_opponent_role: z.enum(["مدعي", "مدعى عليه"], {
     error: () => ({
-      message: "صفة الخصم يجب أن تكون مدعي أو مدعي عليه",
+      message: "صفة الخصم يجب أن تكون مدعي أو مدعى عليه",
     }),
   }),
 
@@ -50,3 +50,4 @@ export const caseSchema = z.object({
 });
 
 export type CaseFormData = z.infer<typeof caseSchema>;
+export default caseSchema;
