@@ -12,6 +12,14 @@ export default function RootLayout() {
         options={{ title: "الصفحة الرئيسية", headerShown: false }}
       ></Stack.Screen>
       <Stack.Screen
+        name="Login"
+        options={{ title: "تسجيل الدخول", headerShown: false }}
+      ></Stack.Screen>
+      <Stack.Screen
+        name="Register"
+        options={{ title: "إنشاء حساب جديد", headerShown: false }}
+      ></Stack.Screen>
+      <Stack.Screen
         name="CreateCase"
         options={{ title: "إضافة قضية", headerShown: true }}
       ></Stack.Screen>

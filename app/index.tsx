@@ -2,6 +2,7 @@ import { CreateCasesTable, getAllCases } from "@/app/database";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
@@ -13,8 +14,6 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { CaseT } from "./types";
-
-// ─── CaseItem ─────────────────────────────────────────────────────────────────
 
 type CaseItemProps = { caseItem: CaseT };
 
@@ -75,8 +74,6 @@ const CaseItem = ({ caseItem }: CaseItemProps) => (
   </Pressable>
 );
 
-// ─── empty state ──────────────────────────────────────────────────────────────
-
 const EmptyState = () => (
   <View style={styles.emptyContainer}>
     <Feather name="folder" size={48} color="#d1d5db" />
@@ -84,8 +81,6 @@ const EmptyState = () => (
     <Text style={styles.emptySubtitle}>اضغط + لإضافة قضية جديدة</Text>
   </View>
 );
-
-// ─── screen ───────────────────────────────────────────────────────────────────
 
 export default function Index() {
   const [cases, setCases] = useState<CaseT[]>([]);
@@ -97,9 +92,17 @@ export default function Index() {
 
   useEffect(() => {
     async function init() {
+      const token = await SecureStore.getItemAsync("jwt");
+
+      if (!token) {
+        router.replace("/Login");
+        return;
+      }
+
       await CreateCasesTable();
-      loadCases();
+      await loadCases();
     }
+
     init();
   }, []);
 
