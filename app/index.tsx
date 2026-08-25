@@ -112,7 +112,6 @@ export default function Index() {
         router.replace("/Choice" as never);
         return;
       }
-
       await CreateCasesTable();
       await loadCases();
     }
