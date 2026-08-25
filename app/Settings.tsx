@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -27,6 +28,11 @@ export default function Settings() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  const handleLogout = async () => {
+    await SecureStore.deleteItemAsync("jwt");
+    router.navigate("/Login");
+  };
 
   const handleSync = async () => {
     setMessage(null);
@@ -134,6 +140,21 @@ export default function Settings() {
               <>
                 <Feather name="refresh-cw" size={18} color="#fff" />
                 <Text style={styles.syncBtnText}>مزامنة</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.syncBtn, loading && styles.syncBtnDisabled]}
+            onPress={handleLogout}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Feather name="log-out" size={18} color="#fff" />
+                <Text style={styles.syncBtnText}>تسجيل الخروج</Text>
               </>
             )}
           </TouchableOpacity>

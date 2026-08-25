@@ -445,7 +445,7 @@ const Register = ({ navigation }: Props) => {
           {/* Login link */}
           <View style={styles.bottomRow}>
             <Text style={styles.bottomText}>لديك حساب بالفعل؟ </Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <TouchableOpacity onPress={() => router.navigate("/Login")}>
               <Text style={styles.bottomLink}>سجّل دخولك</Text>
             </TouchableOpacity>
           </View>

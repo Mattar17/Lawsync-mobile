@@ -27,6 +27,42 @@ export default function RootLayout() {
         name="Settings"
         options={{ title: "الإعدادات", headerShown: true }}
       ></Stack.Screen>
+      <Stack.Screen
+        name="Choice"
+        options={{ title: "اختيار المساحة", headerShown: false }}
+      />
+      <Stack.Screen
+        name="Dashboard"
+        options={{ title: "المكتب", headerShown: false }}
+      />
+      <Stack.Screen
+        name="Books"
+        options={{ title: "المكتبة القانونية", headerShown: false }}
+      />
+      <Stack.Screen
+        name="Documents"
+        options={{ title: "إنشاء المستندات", headerShown: false }}
+      />
+      <Stack.Screen
+        name="workspace/Cases"
+        options={{ title: "القضايا", headerShown: false }}
+      />
+      <Stack.Screen
+        name="workspace/Tasks"
+        options={{ title: "المهام", headerShown: false }}
+      />
+      <Stack.Screen
+        name="workspace/Invites"
+        options={{ title: "الدعوات", headerShown: false }}
+      />
+      <Stack.Screen
+        name="workspace/Members"
+        options={{ title: "أعضاء المكتب", headerShown: false }}
+      />
+      <Stack.Screen
+        name="workspace/OfficeSettings"
+        options={{ title: "إعدادات المكتب", headerShown: false }}
+      />
     </Stack>
   );
 }

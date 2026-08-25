@@ -1,7 +1,7 @@
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { jwtDecode, type JwtPayload } from "jwt-decode";
+import { type JwtPayload } from "jwt-decode";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { useUserStore } from "./zustandStore/userStore";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
@@ -185,9 +186,8 @@ const Login = ({ navigation }: Props) => {
         return;
       }
 
-      await SecureStore.setItemAsync("jwt", data.data);
-      const decoded = jwtDecode(data.data) as MyJwtPayload;
-
+      await SecureStore.setItemAsync("jwt", data.data.token);
+      useUserStore.getState().setUser(data.data.user);
       router.navigate("/");
     } catch (err) {
       showToast("حدث خطأ أثناء تسجيل الدخول");

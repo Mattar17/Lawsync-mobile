@@ -1,7 +1,7 @@
 import { CreateCasesTable, getAllCases } from "@/app/database";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { CaseT } from "./types";
+import { useUserStore } from "./zustandStore/userStore";
 
 type CaseItemProps = { caseItem: CaseT };
 
@@ -84,11 +85,14 @@ const EmptyState = () => (
 
 export default function Index() {
   const [cases, setCases] = useState<CaseT[]>([]);
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
 
   async function loadCases() {
     const allCases = (await getAllCases()) as CaseT[];
     setCases(allCases);
   }
+
+  const user = useUserStore((state) => state.user);
 
   useEffect(() => {
     async function init() {
@@ -99,12 +103,22 @@ export default function Index() {
         return;
       }
 
+      if (mode === "cases") {
+        router.replace("/workspace/Cases" as never);
+        return;
+      }
+
+      if (mode !== "cases") {
+        router.replace("/Choice" as never);
+        return;
+      }
+
       await CreateCasesTable();
       await loadCases();
     }
 
     init();
-  }, []);
+  }, [mode]);
 
   useFocusEffect(
     useCallback(() => {
