@@ -16,10 +16,8 @@ import {
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { login } from "./api/auth";
 import { useUserStore } from "./zustandStore/userStore";
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
 
 interface MyJwtPayload extends JwtPayload {
   admin?: boolean;
@@ -162,26 +160,19 @@ const Login = ({ navigation }: Props) => {
   };
 
   const handleSubmit = async () => {
+    console.log("Submitting ....");
     if (remember) {
       await SecureStore.setItemAsync("savedEmail", email);
     } else {
       await SecureStore.deleteItemAsync("savedEmail");
     }
+    console.log("After remember ....");
 
     setLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}/api/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY!,
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
+      const { response: res, body: data } = await login(email, password);
       console.log(data);
-      if (!res.ok || !data.success) {
+      if (!res.ok || !data.success || !data.data) {
         showToast(data.message || "فشل تسجيل الدخول");
         return;
       }

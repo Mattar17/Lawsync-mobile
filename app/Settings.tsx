@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { syncCases } from "./api/sync";
 import { getAllCases } from "./database";
 import { CaseT } from "./types";
 
@@ -48,15 +49,7 @@ export default function Settings() {
     setLoading(true);
     console.log(Cases);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-      const response = await fetch(`${apiUrl}/api/sync`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": `${process.env.EXPO_PUBLIC_API_KEY}`,
-        },
-        body: JSON.stringify({ token, cases: Cases }),
-      });
+      const { response } = await syncCases(token, Cases);
 
       if (!response.ok) {
         throw new Error(`فشلت المزامنة (${response.status})`);

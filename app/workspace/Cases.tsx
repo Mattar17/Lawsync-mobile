@@ -9,16 +9,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import WorkspaceHeader from "./WorkspaceHeader";
-import { getActiveOffice, getCases, RemoteCase } from "./api";
+import { getOfficeCases, type RemoteCase } from "../api/cases";
+import { getActiveOffice } from "../api/office";
 import { styles } from "./styles";
+import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function Cases() {
   const [cases, setCases] = useState<RemoteCase[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     getActiveOffice()
-      .then((office) => office && getCases(office.id).then(setCases))
+      .then((office) => office && getOfficeCases(office.id).then(setCases))
       .catch(() => setCases([]))
       .finally(() => setLoading(false));
   }, []);
@@ -27,8 +28,22 @@ export default function Cases() {
       <WorkspaceHeader title="القضايا" />
       <View style={styles.content}>
         <Text style={styles.kicker}>مساحة العمل اليومية</Text>
-        <Text style={styles.title}>القضايا</Text>
-        <Text style={styles.subtitle}>جميع القضايا داخل المكتب</Text>
+        <View style={styles.titleRow}>
+          <TouchableOpacity
+            style={[
+              styles.action,
+              { marginTop: 0, marginLeft: 12, padding: 11 },
+            ]}
+            onPress={() => router.push("/CreateCase" as never)}
+          >
+            <Feather name="plus" size={17} color="#fff" />
+            <Text style={styles.actionText}>قضية جديدة</Text>
+          </TouchableOpacity>
+          <View style={styles.titleCopy}>
+            <Text style={styles.title}>القضايا</Text>
+            <Text style={styles.subtitle}>جميع القضايا داخل المكتب</Text>
+          </View>
+        </View>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 50 }} color="#b8975a" />
         ) : (

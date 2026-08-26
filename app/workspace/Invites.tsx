@@ -9,15 +9,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import WorkspaceHeader from "./WorkspaceHeader";
 import {
   cancelInvite,
   createInvite,
-  getActiveOffice,
   getOfficeInvites,
-  Invite,
-} from "./api";
+  type Invite,
+} from "../api/invites";
+import { getActiveOffice } from "../api/office";
 import { styles } from "./styles";
+import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function Invites() {
   const [officeId, setOfficeId] = useState("");

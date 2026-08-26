@@ -78,7 +78,7 @@ export async function createCase(caseDetails: CaseT) {
       caseDetails.client_opponent_name,
 
       caseDetails.client_role,
-      caseDetails.client_opponent_role,
+      caseDetails.client_opponent_role ?? "",
 
       caseDetails.client_national_id,
       caseDetails.client_opponent_national_id,
@@ -87,7 +87,7 @@ export async function createCase(caseDetails: CaseT) {
       caseDetails.next_court_session_date,
 
       caseDetails.case_status,
-      caseDetails.case_notes,
+      caseDetails.case_notes ?? "",
     ],
   );
 
@@ -126,13 +126,13 @@ export async function updateCase(id: string, data: CaseT) {
       data.client_name,
       data.client_opponent_name,
       data.client_role,
-      data.client_opponent_role,
+      data.client_opponent_role ?? "",
       data.client_national_id,
       data.client_opponent_national_id,
       data.latest_court_session_date,
       data.next_court_session_date,
       data.case_status,
-      data.case_notes,
+      data.case_notes ?? "",
       id,
     ],
   );

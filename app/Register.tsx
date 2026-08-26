@@ -14,9 +14,7 @@ import {
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
+import { register } from "./api/auth";
 
 type RootStackParamList = {
   Login: undefined;
@@ -215,22 +213,12 @@ const Register = ({ navigation }: Props) => {
 
     setLoading(true);
     try {
-      console.log(`Sending request to: ${BASE_URL}/api/register`);
-      const res = await fetch(`${BASE_URL}/api/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY!,
-        },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          phone: form.phone,
-        }),
+      const { response: res, body: data } = await register({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        phone: form.phone,
       });
-
-      const data = await res.json();
       console.log(data);
       if (!res.ok || !data.success) {
         showToast(data.message || "فشل إنشاء الحساب");

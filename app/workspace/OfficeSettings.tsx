@@ -8,9 +8,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import WorkspaceHeader from "./WorkspaceHeader";
-import { getActiveOffice, getOffice, Office, updateOffice } from "./api";
+import {
+  getActiveOffice,
+  getOffice,
+  type Office,
+  updateOffice,
+} from "../api/office";
 import { styles } from "./styles";
+import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function OfficeSettings() {
   const [office, setOffice] = useState<Office | null>(null);

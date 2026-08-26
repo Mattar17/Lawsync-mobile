@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { CASE_DEGREES, CASE_STATUSES, CASE_TYPES } from "../types";
 
 const arabicEnglishNameRegex = /^[\u0600-\u06FFa-zA-Z\s]+$/;
 
 export const caseSchema = z.object({
+  description: z.string(),
   case_number: z
     .string()
     .min(1, "رقم القضية مطلوب")
@@ -26,12 +28,6 @@ export const caseSchema = z.object({
     }),
   }),
 
-  client_opponent_role: z.enum(["مدعي", "مدعى عليه"], {
-    error: () => ({
-      message: "صفة الخصم يجب أن تكون مدعي أو مدعى عليه",
-    }),
-  }),
-
   client_national_id: z
     .string()
     .regex(/^\d{14}$/, "الرقم القومي للموكل يجب أن يتكون من 14 رقم"),
@@ -44,9 +40,11 @@ export const caseSchema = z.object({
 
   next_court_session_date: z.string().min(1, "تاريخ الجلسة القادمة مطلوب"),
 
-  case_status: z.string().min(1, "حالة القضية مطلوبة"),
-
-  case_notes: z.string(),
+  case_status: z.enum(CASE_STATUSES, {
+    error: () => ({ message: "اختر حالة قضية صحيحة" }),
+  }),
+  case_type: z.enum(CASE_TYPES).optional(),
+  case_degree: z.enum(CASE_DEGREES).optional(),
 });
 
 export type CaseFormData = z.infer<typeof caseSchema>;

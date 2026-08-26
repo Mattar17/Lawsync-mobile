@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,29 +11,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  getAllBooksInCategory,
+  getAllCategories,
+  getFileUrl,
+  type Book,
+  type BookCategory,
+} from "./api/books";
 
-type Category = { id: string; name: string };
-type Book = {
-  id: string;
-  title: string;
-  description?: string | null;
-  file_ext?: string;
-};
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
-
-async function request(path: string) {
-  const token = await SecureStore.getItemAsync("jwt");
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": API_KEY!,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const result = await response.json();
-  return result.data ?? [];
-}
+type Category = BookCategory;
 
 export default function Books() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -43,7 +28,7 @@ export default function Books() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    request("/api/books/category")
+    getAllCategories()
       .then(setCategories)
       .catch(() => setCategories([]))
       .finally(() => setLoading(false));
@@ -52,13 +37,13 @@ export default function Books() {
     setSelected(category);
     setLoading(true);
     try {
-      setBooks(await request(`/api/books/category/${category.id}`));
+      setBooks(await getAllBooksInCategory(category.id));
     } finally {
       setLoading(false);
     }
   };
   const openBook = async (book: Book) => {
-    const result = await request(`/api/books/${book.id}`);
+    const result = await getFileUrl(book.id);
     if (result.url) await Linking.openURL(result.url);
   };
 

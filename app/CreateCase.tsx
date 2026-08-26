@@ -1,15 +1,26 @@
-import { useNavigation } from "@react-navigation/native";
+import { router } from "expo-router";
+import { Alert } from "react-native";
+import { createCase } from "./api/cases";
 import CaseForm from "./components/CaseForm";
-import { createCase } from "./database";
 import { CaseT } from "./types";
+import { useUserStore } from "./zustandStore/userStore";
 
 export default function CreateCase() {
-  const navigation = useNavigation();
+  const currentOffice = useUserStore((state) => state.currentOffice);
 
   const handleSubmit = async (data: CaseT) => {
-    const res = await createCase(data);
-    console.log(res);
-    navigation.goBack();
+    if (!currentOffice) {
+      Alert.alert("لا يوجد مكتب", "اختر مكتباً قبل إضافة قضية.");
+      return;
+    }
+    try {
+      await createCase(currentOffice.id, data);
+      Alert.alert("تمت الإضافة", "تمت إضافة القضية إلى المكتب.", [
+        { text: "حسناً", onPress: () => router.back() },
+      ]);
+    } catch (error) {
+      Alert.alert("تعذر إضافة القضية", (error as Error).message);
+    }
   };
 
   return (

@@ -33,6 +33,13 @@ export const styles = StyleSheet.create({
     marginTop: 5,
     textAlign: "right",
   },
+  titleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 7,
+  },
+  titleCopy: { flex: 1 },
   panel: {
     backgroundColor: "#fff",
     borderColor: "#e7e9ee",

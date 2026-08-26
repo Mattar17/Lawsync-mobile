@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { CaseT } from "./types";
-import { useUserStore } from "./zustandStore/userStore";
 
 type CaseItemProps = { caseItem: CaseT };
 
@@ -92,8 +91,6 @@ export default function Index() {
     setCases(allCases);
   }
 
-  const user = useUserStore((state) => state.user);
-
   useEffect(() => {
     async function init() {
       const token = await SecureStore.getItemAsync("jwt");
@@ -130,12 +127,7 @@ export default function Index() {
       <SafeAreaView style={styles.root} edges={["top"]}>
         {/* header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.settingsBtn}
-            onPress={() => router.push("/Settings")}
-          >
-            <Feather name="settings" size={20} color="#374151" />
-          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
           <Text style={styles.headerTitle}>القضايا</Text>
 
           <TouchableOpacity
@@ -191,6 +183,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#111827",
   },
+  headerSpacer: {
+    width: 36,
+    height: 36,
+  },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -201,16 +197,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 10,
     backgroundColor: "#2563eb",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  settingsBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#f3f4f6",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
     alignItems: "center",
     justifyContent: "center",
   },

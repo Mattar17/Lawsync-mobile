@@ -8,9 +8,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import WorkspaceHeader from "./WorkspaceHeader";
-import { getActiveOffice, getMembers, Member, removeMember } from "./api";
+import {
+  getActiveOffice,
+  getMembers,
+  removeMember,
+  type Member,
+} from "../api/office";
 import { styles } from "./styles";
+import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function Members() {
   const [officeId, setOfficeId] = useState("");

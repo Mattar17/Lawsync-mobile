@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CreateCasesTable, getAllCases } from "./database";
 import { CaseT } from "./types";
+import { useUserStore } from "./zustandStore/userStore";
 
 const tasks = [
   { text: "إيداع مذكرة قضية البنك الأهلي", due: "تم", done: true },
@@ -19,12 +20,18 @@ const tasks = [
 ];
 
 export default function Dashboard() {
+  const currentOffice = useUserStore((state) => state.currentOffice);
   const [cases, setCases] = useState<CaseT[]>([]);
   useEffect(() => {
+    if (!currentOffice) {
+      router.replace("/Choice" as never);
+      return;
+    }
     CreateCasesTable().then(() =>
       getAllCases().then((items) => setCases(items as CaseT[])),
     );
-  }, []);
+  }, [currentOffice]);
+  if (!currentOffice) return null;
   const upcoming = cases.filter((item) => item.next_court_session_date).length;
   const active = cases.filter((item) => item.case_status !== "مغلقة").length;
   const stats = [
@@ -63,14 +70,46 @@ export default function Dashboard() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          style={styles.back}
-          onPress={() => router.replace("/Choice" as never)}
-        >
-          <Feather name="arrow-right" size={20} color="#7c879b" />
-          <Text style={styles.backText}>المساحات</Text>
-        </TouchableOpacity>
-        <Text style={styles.office}>● مكتب المحاماة</Text>
+        <View style={styles.topNav}>
+          <TouchableOpacity
+            style={styles.officeSwitcher}
+            onPress={() => router.replace("/Choice" as never)}
+          >
+            <Feather name="repeat" size={16} color="#b8975a" />
+            <Text style={styles.officeSwitcherText}>تغيير المكتب</Text>
+          </TouchableOpacity>
+          <View style={styles.quickLinks}>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => router.push("/workspace/Tasks" as never)}
+              accessibilityLabel="المهام"
+            >
+              <Feather name="check-square" size={18} color="#d1624e" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => router.push("/workspace/Members" as never)}
+              accessibilityLabel="الفريق"
+            >
+              <Feather name="users" size={18} color="#3b6fa0" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => router.push("/workspace/Invites" as never)}
+              accessibilityLabel="الدعوات"
+            >
+              <Feather name="mail" size={18} color="#b8975a" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => router.push("/workspace/OfficeSettings" as never)}
+              accessibilityLabel="الإعدادات"
+            >
+              <Feather name="sliders" size={18} color="#7c5cbf" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <Text style={styles.office}>● {currentOffice.name}</Text>
         <Text style={styles.title}>مرحباً، محمد</Text>
         <Text style={styles.subtitle}>مساحة عملك اليومية</Text>
         <View style={styles.stats}>
@@ -110,36 +149,6 @@ export default function Dashboard() {
           <Text style={styles.casesButtonText}>عرض كل القضايا</Text>
           <Feather name="arrow-left" size={18} color="#fff" />
         </TouchableOpacity>
-        <View style={styles.quickLinks}>
-          <TouchableOpacity
-            style={styles.quickLink}
-            onPress={() => router.push("/workspace/Tasks" as never)}
-          >
-            <Feather name="check-square" size={18} color="#d1624e" />
-            <Text style={styles.quickLinkText}>المهام</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickLink}
-            onPress={() => router.push("/workspace/Members" as never)}
-          >
-            <Feather name="users" size={18} color="#3b6fa0" />
-            <Text style={styles.quickLinkText}>الفريق</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickLink}
-            onPress={() => router.push("/workspace/Invites" as never)}
-          >
-            <Feather name="mail" size={18} color="#b8975a" />
-            <Text style={styles.quickLinkText}>الدعوات</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickLink}
-            onPress={() => router.push("/workspace/OfficeSettings" as never)}
-          >
-            <Feather name="sliders" size={18} color="#7c5cbf" />
-            <Text style={styles.quickLinkText}>الإعدادات</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -148,13 +157,14 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#f5f6f8" },
   content: { padding: 20, paddingBottom: 36 },
-  back: {
+  topNav: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 7,
-    marginBottom: 26,
+    justifyContent: "space-between",
+    marginBottom: 24,
   },
-  backText: { color: "#7c879b", fontSize: 13 },
+  officeSwitcher: { alignItems: "center", flexDirection: "row", gap: 6 },
+  officeSwitcherText: { color: "#b8975a", fontSize: 12, fontWeight: "700" },
   office: {
     color: "#2f9e6e",
     fontSize: 12,
@@ -244,16 +254,15 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   casesButtonText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  quickLinks: { flexDirection: "row", gap: 8, marginTop: 12 },
+  quickLinks: { flexDirection: "row", gap: 8 },
   quickLink: {
     alignItems: "center",
     backgroundColor: "#fff",
     borderColor: "#e7e9ee",
     borderRadius: 10,
     borderWidth: 1,
-    flex: 1,
-    gap: 6,
-    paddingVertical: 12,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
   },
-  quickLinkText: { color: "#526071", fontSize: 11, fontWeight: "700" },
 });

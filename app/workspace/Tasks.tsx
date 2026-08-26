@@ -10,9 +10,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import WorkspaceHeader from "./WorkspaceHeader";
-import { createTask, getActiveOffice, getTasks, Task, updateTask } from "./api";
+import { getActiveOffice } from "../api/office";
+import {
+  createTask,
+  getOfficeTasks,
+  type Task,
+  updateTask,
+} from "../api/tasks";
 import { styles } from "./styles";
+import WorkspaceHeader from "./WorkspaceHeader";
 
 const statuses = ["لم تبدأ", "قيد التنفيذ", "مكتملة"];
 export default function Tasks() {
@@ -25,7 +31,7 @@ export default function Tasks() {
     const office = await getActiveOffice();
     if (!office) return;
     setOfficeId(office.id);
-    setTasks(await getTasks(office.id));
+    setTasks(await getOfficeTasks(office.id));
   };
   useEffect(() => {
     load()

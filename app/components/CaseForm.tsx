@@ -10,22 +10,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { CaseT } from "../types";
+import { CASE_DEGREES, CASE_STATUSES, CASE_TYPES, CaseT } from "../types";
 import { caseSchema } from "../validation/caseSchema";
 
 export const EMPTY_CASE: CaseT = {
+  description: "",
   case_number: "",
   case_year: "",
   client_name: "",
   client_opponent_name: "",
   client_role: "",
-  client_opponent_role: "",
   client_national_id: "",
   client_opponent_national_id: "",
   latest_court_session_date: "",
   next_court_session_date: "",
-  case_status: "",
-  case_notes: "",
+  case_status: "قضية جديدة",
 };
 
 type CaseFormProps = {
@@ -194,12 +193,36 @@ export default function CaseForm({
         <View style={styles.inCardDivider} />
 
         <FieldWrapper label="حالة القضية" error={errors.case_status}>
-          <TextInput
-            placeholder="مثال: قيد النظر"
-            placeholderTextColor="#9ca3af"
-            style={styles.input}
+          <RadioGroup
             value={caseDetails.case_status}
-            onChangeText={(t) => handleChange("case_status", t)}
+            onChange={(value) => handleChange("case_status", value)}
+            options={CASE_STATUSES.map((status) => ({
+              label: status,
+              value: status,
+            }))}
+          />
+        </FieldWrapper>
+
+        <View style={styles.inCardDivider} />
+
+        <FieldWrapper label="نوع القضية">
+          <RadioGroup
+            value={caseDetails.case_type ?? ""}
+            onChange={(value) => handleChange("case_type", value)}
+            options={CASE_TYPES.map((type) => ({ label: type, value: type }))}
+          />
+        </FieldWrapper>
+
+        <View style={styles.inCardDivider} />
+
+        <FieldWrapper label="الدرجة">
+          <RadioGroup
+            value={caseDetails.case_degree ?? ""}
+            onChange={(value) => handleChange("case_degree", value)}
+            options={CASE_DEGREES.map((degree) => ({
+              label: degree,
+              value: degree,
+            }))}
           />
         </FieldWrapper>
       </View>
@@ -239,6 +262,18 @@ export default function CaseForm({
             onChangeText={(t) => handleChange("client_national_id", t)}
           />
         </FieldWrapper>
+
+        <View style={styles.inCardDivider} />
+
+        <FieldWrapper label="نوع الموكل">
+          <TextInput
+            placeholder="مثال: فرد"
+            placeholderTextColor="#9ca3af"
+            style={styles.input}
+            value={caseDetails.client_type}
+            onChangeText={(t) => handleChange("client_type", t)}
+          />
+        </FieldWrapper>
       </View>
 
       {/* ── opponent ── */}
@@ -253,18 +288,6 @@ export default function CaseForm({
             onChangeText={(t) => handleChange("client_opponent_name", t)}
           />
         </FieldWrapper>
-
-        <View style={styles.inCardDivider} />
-
-        <FieldWrapper label="الصفة" error={errors.client_opponent_role}>
-          <RadioGroup
-            value={caseDetails.client_opponent_role}
-            onChange={(value) => handleChange("client_opponent_role", value)}
-            options={roleOptions}
-          />
-        </FieldWrapper>
-
-        <View style={styles.inCardDivider} />
 
         <FieldWrapper
           label="الرقم القومي"
@@ -284,6 +307,30 @@ export default function CaseForm({
       {/* ── sessions ── */}
       <SectionHeader label="الجلسات" />
       <View style={styles.card}>
+        <FieldWrapper label="المحكمة">
+          <TextInput
+            placeholder="اسم المحكمة"
+            placeholderTextColor="#9ca3af"
+            style={styles.input}
+            value={caseDetails.court_name}
+            onChangeText={(t) => handleChange("court_name", t)}
+          />
+        </FieldWrapper>
+
+        <View style={styles.inCardDivider} />
+
+        <FieldWrapper label="دائرة/رقم الدائرة">
+          <TextInput
+            placeholder="رقم الدائرة"
+            placeholderTextColor="#9ca3af"
+            style={styles.input}
+            value={caseDetails.court_circuit}
+            onChangeText={(t) => handleChange("court_circuit", t)}
+          />
+        </FieldWrapper>
+
+        <View style={styles.inCardDivider} />
+
         <FieldWrapper
           label="تاريخ الجلسة الماضية"
           error={errors.latest_court_session_date}
@@ -360,17 +407,17 @@ export default function CaseForm({
         )}
       </View>
 
-      {/* ── notes ── */}
-      <SectionHeader label="ملاحظات" />
+      {/* ── description ── */}
+      <SectionHeader label="وصف القضية" />
       <View style={styles.card}>
         <TextInput
-          placeholder="أي ملاحظات إضافية حول القضية…"
+          placeholder="أدخل وصف القضية"
           placeholderTextColor="#9ca3af"
           style={styles.notesInput}
           multiline
           numberOfLines={4}
-          value={caseDetails.case_notes}
-          onChangeText={(t) => handleChange("case_notes", t)}
+          value={caseDetails.description}
+          onChangeText={(t) => handleChange("description", t)}
         />
       </View>
 
@@ -467,11 +514,12 @@ const styles = StyleSheet.create({
   //radio group
   radioGroup: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   radioBtn: {
-    flex: 1,
     alignItems: "center",
+    minWidth: "30%",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#e5e7eb",
