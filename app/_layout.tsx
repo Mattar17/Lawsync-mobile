@@ -25,7 +25,7 @@ export default function RootLayout() {
       ></Stack.Screen>
       <Stack.Screen
         name="Settings"
-        options={{ title: "الإعدادات", headerShown: true }}
+        options={{ title: "الإعدادات", headerShown: false }}
       ></Stack.Screen>
       <Stack.Screen
         name="Choice"

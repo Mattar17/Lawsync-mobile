@@ -2,6 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useState } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -149,289 +151,304 @@ export default function CaseForm({
   ];
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
     >
-      {title ? <Text style={styles.title}>{title}</Text> : null}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {title ? <Text style={styles.title}>{title}</Text> : null}
 
-      {/* ── case identity ── */}
-      <SectionHeader label="بيانات القضية" />
-      <View style={styles.card}>
-        <View style={styles.rowFields}>
-          <View style={[styles.fieldWrapper, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>رقم القضية</Text>
-            <TextInput
-              placeholder="مثال: 1234"
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              keyboardType="numeric"
-              value={caseDetails.case_number}
-              onChangeText={(t) => handleChange("case_number", t)}
-            />
-            {errors.case_number ? (
-              <Text style={styles.errorText}>{errors.case_number}</Text>
-            ) : null}
+        {/* ── case identity ── */}
+        <SectionHeader label="بيانات القضية" />
+        <View style={styles.card}>
+          <View style={styles.rowFields}>
+            <View style={[styles.fieldWrapper, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>رقم القضية</Text>
+              <TextInput
+                placeholder="مثال: 1234"
+                placeholderTextColor="#9ca3af"
+                style={styles.input}
+                keyboardType="numeric"
+                value={caseDetails.case_number}
+                onChangeText={(t) => handleChange("case_number", t)}
+              />
+              {errors.case_number ? (
+                <Text style={styles.errorText}>{errors.case_number}</Text>
+              ) : null}
+            </View>
+
+            <View style={[styles.fieldWrapper, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>السنة</Text>
+              <TextInput
+                placeholder="مثال: 2024"
+                placeholderTextColor="#9ca3af"
+                style={styles.input}
+                keyboardType="numeric"
+                value={caseDetails.case_year}
+                onChangeText={(t) => handleChange("case_year", t)}
+              />
+              {errors.case_year ? (
+                <Text style={styles.errorText}>{errors.case_year}</Text>
+              ) : null}
+            </View>
           </View>
 
-          <View style={[styles.fieldWrapper, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>السنة</Text>
-            <TextInput
-              placeholder="مثال: 2024"
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              keyboardType="numeric"
-              value={caseDetails.case_year}
-              onChangeText={(t) => handleChange("case_year", t)}
+          <View style={styles.inCardDivider} />
+
+          <FieldWrapper label="حالة القضية" error={errors.case_status}>
+            <RadioGroup
+              value={caseDetails.case_status}
+              onChange={(value) => handleChange("case_status", value)}
+              options={CASE_STATUSES.map((status) => ({
+                label: status,
+                value: status,
+              }))}
             />
-            {errors.case_year ? (
-              <Text style={styles.errorText}>{errors.case_year}</Text>
-            ) : null}
-          </View>
+          </FieldWrapper>
+
+          <View style={styles.inCardDivider} />
+
+          <FieldWrapper label="نوع القضية">
+            <RadioGroup
+              value={caseDetails.case_type ?? ""}
+              onChange={(value) => handleChange("case_type", value)}
+              options={CASE_TYPES.map((type) => ({ label: type, value: type }))}
+            />
+          </FieldWrapper>
+
+          <View style={styles.inCardDivider} />
+
+          <FieldWrapper label="الدرجة">
+            <RadioGroup
+              value={caseDetails.case_degree ?? ""}
+              onChange={(value) => handleChange("case_degree", value)}
+              options={CASE_DEGREES.map((degree) => ({
+                label: degree,
+                value: degree,
+              }))}
+            />
+          </FieldWrapper>
         </View>
 
-        <View style={styles.inCardDivider} />
+        {/* ── client ── */}
+        <SectionHeader label="بيانات الموكل" />
+        <View style={styles.card}>
+          <FieldWrapper label="الاسم" error={errors.client_name}>
+            <TextInput
+              placeholder="الاسم الكامل"
+              placeholderTextColor="#9ca3af"
+              style={styles.input}
+              value={caseDetails.client_name}
+              onChangeText={(t) => handleChange("client_name", t)}
+            />
+          </FieldWrapper>
 
-        <FieldWrapper label="حالة القضية" error={errors.case_status}>
-          <RadioGroup
-            value={caseDetails.case_status}
-            onChange={(value) => handleChange("case_status", value)}
-            options={CASE_STATUSES.map((status) => ({
-              label: status,
-              value: status,
-            }))}
-          />
-        </FieldWrapper>
+          <View style={styles.inCardDivider} />
 
-        <View style={styles.inCardDivider} />
+          <FieldWrapper label="الصفة" error={errors.client_role}>
+            <RadioGroup
+              value={caseDetails.client_role}
+              onChange={(value) => handleChange("client_role", value)}
+              options={roleOptions}
+            />
+          </FieldWrapper>
 
-        <FieldWrapper label="نوع القضية">
-          <RadioGroup
-            value={caseDetails.case_type ?? ""}
-            onChange={(value) => handleChange("case_type", value)}
-            options={CASE_TYPES.map((type) => ({ label: type, value: type }))}
-          />
-        </FieldWrapper>
+          <View style={styles.inCardDivider} />
 
-        <View style={styles.inCardDivider} />
+          <FieldWrapper label="الرقم القومي" error={errors.client_national_id}>
+            <TextInput
+              placeholder="14 رقماً"
+              placeholderTextColor="#9ca3af"
+              keyboardType="numeric"
+              style={styles.input}
+              value={caseDetails.client_national_id}
+              onChangeText={(t) => handleChange("client_national_id", t)}
+            />
+          </FieldWrapper>
 
-        <FieldWrapper label="الدرجة">
-          <RadioGroup
-            value={caseDetails.case_degree ?? ""}
-            onChange={(value) => handleChange("case_degree", value)}
-            options={CASE_DEGREES.map((degree) => ({
-              label: degree,
-              value: degree,
-            }))}
-          />
-        </FieldWrapper>
-      </View>
+          <View style={styles.inCardDivider} />
 
-      {/* ── client ── */}
-      <SectionHeader label="بيانات الموكل" />
-      <View style={styles.card}>
-        <FieldWrapper label="الاسم" error={errors.client_name}>
-          <TextInput
-            placeholder="الاسم الكامل"
-            placeholderTextColor="#9ca3af"
-            style={styles.input}
-            value={caseDetails.client_name}
-            onChangeText={(t) => handleChange("client_name", t)}
-          />
-        </FieldWrapper>
+          <FieldWrapper label="نوع الموكل">
+            <TextInput
+              placeholder="مثال: فرد"
+              placeholderTextColor="#9ca3af"
+              style={styles.input}
+              value={caseDetails.client_type}
+              onChangeText={(t) => handleChange("client_type", t)}
+            />
+          </FieldWrapper>
+        </View>
 
-        <View style={styles.inCardDivider} />
+        {/* ── opponent ── */}
+        <SectionHeader label="بيانات الخصم" />
+        <View style={styles.card}>
+          <FieldWrapper label="الاسم" error={errors.client_opponent_name}>
+            <TextInput
+              placeholder="الاسم الكامل"
+              placeholderTextColor="#9ca3af"
+              style={styles.input}
+              value={caseDetails.client_opponent_name}
+              onChangeText={(t) => handleChange("client_opponent_name", t)}
+            />
+          </FieldWrapper>
 
-        <FieldWrapper label="الصفة" error={errors.client_role}>
-          <RadioGroup
-            value={caseDetails.client_role}
-            onChange={(value) => handleChange("client_role", value)}
-            options={roleOptions}
-          />
-        </FieldWrapper>
-
-        <View style={styles.inCardDivider} />
-
-        <FieldWrapper label="الرقم القومي" error={errors.client_national_id}>
-          <TextInput
-            placeholder="14 رقماً"
-            placeholderTextColor="#9ca3af"
-            keyboardType="numeric"
-            style={styles.input}
-            value={caseDetails.client_national_id}
-            onChangeText={(t) => handleChange("client_national_id", t)}
-          />
-        </FieldWrapper>
-
-        <View style={styles.inCardDivider} />
-
-        <FieldWrapper label="نوع الموكل">
-          <TextInput
-            placeholder="مثال: فرد"
-            placeholderTextColor="#9ca3af"
-            style={styles.input}
-            value={caseDetails.client_type}
-            onChangeText={(t) => handleChange("client_type", t)}
-          />
-        </FieldWrapper>
-      </View>
-
-      {/* ── opponent ── */}
-      <SectionHeader label="بيانات الخصم" />
-      <View style={styles.card}>
-        <FieldWrapper label="الاسم" error={errors.client_opponent_name}>
-          <TextInput
-            placeholder="الاسم الكامل"
-            placeholderTextColor="#9ca3af"
-            style={styles.input}
-            value={caseDetails.client_opponent_name}
-            onChangeText={(t) => handleChange("client_opponent_name", t)}
-          />
-        </FieldWrapper>
-
-        <FieldWrapper
-          label="الرقم القومي"
-          error={errors.client_opponent_national_id}
-        >
-          <TextInput
-            placeholder="14 رقماً"
-            placeholderTextColor="#9ca3af"
-            keyboardType="numeric"
-            style={styles.input}
-            value={caseDetails.client_opponent_national_id}
-            onChangeText={(t) => handleChange("client_opponent_national_id", t)}
-          />
-        </FieldWrapper>
-      </View>
-
-      {/* ── sessions ── */}
-      <SectionHeader label="الجلسات" />
-      <View style={styles.card}>
-        <FieldWrapper label="المحكمة">
-          <TextInput
-            placeholder="اسم المحكمة"
-            placeholderTextColor="#9ca3af"
-            style={styles.input}
-            value={caseDetails.court_name}
-            onChangeText={(t) => handleChange("court_name", t)}
-          />
-        </FieldWrapper>
-
-        <View style={styles.inCardDivider} />
-
-        <FieldWrapper label="دائرة/رقم الدائرة">
-          <TextInput
-            placeholder="رقم الدائرة"
-            placeholderTextColor="#9ca3af"
-            style={styles.input}
-            value={caseDetails.court_circuit}
-            onChangeText={(t) => handleChange("court_circuit", t)}
-          />
-        </FieldWrapper>
-
-        <View style={styles.inCardDivider} />
-
-        <FieldWrapper
-          label="تاريخ الجلسة الماضية"
-          error={errors.latest_court_session_date}
-        >
-          <Pressable style={styles.dateBtn} onPress={() => setShowLatest(true)}>
-            <Feather name="calendar" size={16} color="#6b7280" />
-            <Text
-              style={[
-                styles.dateBtnText,
-                caseDetails.latest_court_session_date && styles.dateBtnFilled,
-              ]}
-            >
-              {caseDetails.latest_court_session_date || "اختر التاريخ"}
-            </Text>
-          </Pressable>
-        </FieldWrapper>
-
-        {showLatest && (
-          <DateTimePicker
-            value={latestDate}
-            mode="date"
-            is24Hour
-            onChange={(_, selectedDate) => {
-              setShowLatest(false);
-              if (selectedDate) {
-                setLatestDate(selectedDate);
-                handleChange(
-                  "latest_court_session_date",
-                  selectedDate.toISOString().split("T")[0],
-                );
+          <FieldWrapper
+            label="الرقم القومي"
+            error={errors.client_opponent_national_id}
+          >
+            <TextInput
+              placeholder="14 رقماً"
+              placeholderTextColor="#9ca3af"
+              keyboardType="numeric"
+              style={styles.input}
+              value={caseDetails.client_opponent_national_id}
+              onChangeText={(t) =>
+                handleChange("client_opponent_national_id", t)
               }
-            }}
-          />
-        )}
+            />
+          </FieldWrapper>
+        </View>
 
-        <View style={styles.inCardDivider} />
+        {/* ── sessions ── */}
+        <SectionHeader label="الجلسات" />
+        <View style={styles.card}>
+          <FieldWrapper label="المحكمة">
+            <TextInput
+              placeholder="اسم المحكمة"
+              placeholderTextColor="#9ca3af"
+              style={styles.input}
+              value={caseDetails.court_name}
+              onChangeText={(t) => handleChange("court_name", t)}
+            />
+          </FieldWrapper>
 
-        <FieldWrapper
-          label="تاريخ الجلسة القادمة"
-          error={errors.next_court_session_date}
-        >
-          <Pressable style={styles.dateBtn} onPress={() => setShowNext(true)}>
-            <Feather name="calendar" size={16} color="#2563eb" />
-            <Text
-              style={[
-                styles.dateBtnText,
-                caseDetails.next_court_session_date && styles.dateBtnFilled,
-                caseDetails.next_court_session_date
-                  ? { color: "#2563eb" }
-                  : null,
-              ]}
+          <View style={styles.inCardDivider} />
+
+          <FieldWrapper label="دائرة/رقم الدائرة">
+            <TextInput
+              placeholder="رقم الدائرة"
+              placeholderTextColor="#9ca3af"
+              style={styles.input}
+              value={caseDetails.court_circuit}
+              onChangeText={(t) => handleChange("court_circuit", t)}
+            />
+          </FieldWrapper>
+
+          <View style={styles.inCardDivider} />
+
+          <FieldWrapper
+            label="تاريخ الجلسة الماضية"
+            error={errors.latest_court_session_date}
+          >
+            <Pressable
+              style={styles.dateBtn}
+              onPress={() => setShowLatest(true)}
             >
-              {caseDetails.next_court_session_date || "اختر التاريخ"}
-            </Text>
-          </Pressable>
-        </FieldWrapper>
+              <Feather name="calendar" size={16} color="#6b7280" />
+              <Text
+                style={[
+                  styles.dateBtnText,
+                  caseDetails.latest_court_session_date && styles.dateBtnFilled,
+                ]}
+              >
+                {caseDetails.latest_court_session_date || "اختر التاريخ"}
+              </Text>
+            </Pressable>
+          </FieldWrapper>
 
-        {showNext && (
-          <DateTimePicker
-            value={nextDate}
-            mode="date"
-            is24Hour
-            onChange={(_, selectedDate) => {
-              setShowNext(false);
-              if (selectedDate) {
-                setNextDate(selectedDate);
-                handleChange(
-                  "next_court_session_date",
-                  selectedDate.toISOString().split("T")[0],
-                );
-              }
-            }}
+          {showLatest && (
+            <DateTimePicker
+              value={latestDate}
+              mode="date"
+              is24Hour
+              onChange={(_, selectedDate) => {
+                setShowLatest(false);
+                if (selectedDate) {
+                  setLatestDate(selectedDate);
+                  handleChange(
+                    "latest_court_session_date",
+                    selectedDate.toISOString().split("T")[0],
+                  );
+                }
+              }}
+            />
+          )}
+
+          <View style={styles.inCardDivider} />
+
+          <FieldWrapper
+            label="تاريخ الجلسة القادمة"
+            error={errors.next_court_session_date}
+          >
+            <Pressable style={styles.dateBtn} onPress={() => setShowNext(true)}>
+              <Feather name="calendar" size={16} color="#2563eb" />
+              <Text
+                style={[
+                  styles.dateBtnText,
+                  caseDetails.next_court_session_date && styles.dateBtnFilled,
+                  caseDetails.next_court_session_date
+                    ? { color: "#2563eb" }
+                    : null,
+                ]}
+              >
+                {caseDetails.next_court_session_date || "اختر التاريخ"}
+              </Text>
+            </Pressable>
+          </FieldWrapper>
+
+          {showNext && (
+            <DateTimePicker
+              value={nextDate}
+              mode="date"
+              is24Hour
+              onChange={(_, selectedDate) => {
+                setShowNext(false);
+                if (selectedDate) {
+                  setNextDate(selectedDate);
+                  handleChange(
+                    "next_court_session_date",
+                    selectedDate.toISOString().split("T")[0],
+                  );
+                }
+              }}
+            />
+          )}
+        </View>
+
+        {/* ── description ── */}
+        <SectionHeader label="وصف القضية" />
+        <View style={styles.card}>
+          <TextInput
+            placeholder="أدخل وصف القضية"
+            placeholderTextColor="#9ca3af"
+            style={styles.notesInput}
+            multiline
+            numberOfLines={4}
+            value={caseDetails.description}
+            onChangeText={(t) => handleChange("description", t)}
           />
-        )}
-      </View>
+        </View>
 
-      {/* ── description ── */}
-      <SectionHeader label="وصف القضية" />
-      <View style={styles.card}>
-        <TextInput
-          placeholder="أدخل وصف القضية"
-          placeholderTextColor="#9ca3af"
-          style={styles.notesInput}
-          multiline
-          numberOfLines={4}
-          value={caseDetails.description}
-          onChangeText={(t) => handleChange("description", t)}
-        />
-      </View>
-
-      {/* ── submit ── */}
-      <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-        <Text style={styles.submitBtnText}>{submitLabel}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* ── submit ── */}
+        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+          <Text style={styles.submitBtnText}>{submitLabel}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 // ─── styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  keyboardContainer: {
+    flex: 1,
+  },
   container: {
     padding: 16,
     gap: 8,

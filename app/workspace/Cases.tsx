@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -17,12 +18,35 @@ import WorkspaceHeader from "./WorkspaceHeader";
 export default function Cases() {
   const [cases, setCases] = useState<RemoteCase[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    getActiveOffice()
-      .then((office) => office && getOfficeCases(office.id).then(setCases))
-      .catch(() => setCases([]))
-      .finally(() => setLoading(false));
-  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLoading(true);
+
+      const loadCases = async () => {
+        try {
+          const office = await getActiveOffice();
+          if (!office) {
+            if (active) setCases([]);
+            return;
+          }
+
+          const officeCases = await getOfficeCases(office.id);
+          if (active) setCases(officeCases);
+        } catch {
+          if (active) setCases([]);
+        } finally {
+          if (active) setLoading(false);
+        }
+      };
+
+      loadCases();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
   return (
     <SafeAreaView style={styles.root}>
       <WorkspaceHeader title="القضايا" />

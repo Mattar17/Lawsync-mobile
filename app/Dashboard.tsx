@@ -9,43 +9,51 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getOfficeTasks, Task } from "./api/tasks";
 import { CreateCasesTable, getAllCases } from "./database";
 import { CaseT } from "./types";
 import { useUserStore } from "./zustandStore/userStore";
 
-const tasks = [
-  { text: "إيداع مذكرة قضية البنك الأهلي", due: "تم", done: true },
-  { text: "مراجعة عقد شركة النور", due: "اليوم", done: false },
-  { text: "الاتصال بالموكل كريم منصور", due: "٢:٠٠ م", done: false },
-];
-
 export default function Dashboard() {
   const currentOffice = useUserStore((state) => state.currentOffice);
   const [cases, setCases] = useState<CaseT[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
   useEffect(() => {
     if (!currentOffice) {
       router.replace("/Choice" as never);
       return;
     }
+    setTasksLoading(true);
     CreateCasesTable().then(() =>
       getAllCases().then((items) => setCases(items as CaseT[])),
     );
+    getOfficeTasks(currentOffice.id)
+      .then(setTasks)
+      .catch(() => setTasks([]))
+      .finally(() => setTasksLoading(false));
   }, [currentOffice]);
   if (!currentOffice) return null;
   const upcoming = cases.filter((item) => item.next_court_session_date).length;
   const active = cases.filter((item) => item.case_status !== "مغلقة").length;
+  const completedTasks = tasks.filter(
+    (task) => task.status === "مكتملة",
+  ).length;
+  const urgentTasks = tasks.filter(
+    (task) => task.status === "قيد التنفيذ",
+  ).length;
   const stats = [
     {
-      label: "منجزة اليوم",
-      value: 1,
+      label: "المهام المكتملة",
+      value: completedTasks,
       icon: "check-circle" as const,
       color: "#2f9e6e",
       bg: "#e5f5ee",
     },
     {
       label: "مهام عاجلة",
-      value: 2,
+      value: urgentTasks,
       icon: "clock" as const,
       color: "#c0503f",
       bg: "#faeae6",
@@ -155,19 +163,31 @@ export default function Dashboard() {
             <Feather name="activity" size={18} color="#b8975a" />
             <Text style={styles.panelTitle}>قائمة العمل اليوم</Text>
           </View>
-          {tasks.map((task) => (
-            <View key={task.text} style={styles.task}>
-              <Feather
-                name={task.done ? "check-circle" : "circle"}
-                size={18}
-                color={task.done ? "#2f9e6e" : "#b8975a"}
-              />
-              <Text style={[styles.taskText, task.done && styles.done]}>
-                {task.text}
-              </Text>
-              <Text style={styles.due}>{task.due}</Text>
-            </View>
-          ))}
+          {tasksLoading ? (
+            <Text style={styles.emptyTasks}>جار تحميل المهام...</Text>
+          ) : tasks.length === 0 ? (
+            <Text style={styles.emptyTasks}>لا توجد مهام حتى الآن</Text>
+          ) : (
+            tasks.map((task) => {
+              const isDone = task.status === "مكتملة";
+              const due = task.due_date
+                ? new Date(task.due_date).toLocaleDateString("ar-EG")
+                : task.status;
+              return (
+                <View key={task.id} style={styles.task}>
+                  <Feather
+                    name={isDone ? "check-circle" : "circle"}
+                    size={18}
+                    color={isDone ? "#2f9e6e" : "#b8975a"}
+                  />
+                  <Text style={[styles.taskText, isDone && styles.done]}>
+                    {task.title}
+                  </Text>
+                  <Text style={styles.due}>{due}</Text>
+                </View>
+              );
+            })
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -263,6 +283,12 @@ const styles = StyleSheet.create({
   taskText: { color: "#334155", flex: 1, fontSize: 13, textAlign: "right" },
   done: { color: "#9ca3af", textDecorationLine: "line-through" },
   due: { color: "#7c879b", fontSize: 11 },
+  emptyTasks: {
+    color: "#7c879b",
+    fontSize: 13,
+    paddingVertical: 18,
+    textAlign: "center",
+  },
   quickMenu: { alignItems: "flex-end", position: "relative", zIndex: 2 },
   menuButton: {
     alignItems: "center",

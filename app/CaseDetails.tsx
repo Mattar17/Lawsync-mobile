@@ -11,6 +11,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import {
+  deleteCase as deleteRemoteCase,
+  getCaseDetails,
+  updateCase as updateRemoteCase,
+} from "./api/cases";
+import { getActiveOffice } from "./api/office";
 import CaseForm from "./components/CaseForm";
 import { deleteCase, getCaseById, updateCase } from "./database";
 import { CaseT } from "./types";
@@ -44,20 +50,40 @@ export default function CaseDetails() {
   const [caseDetails, setCaseDetails] = useState<CaseT>({} as CaseT);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [officeId, setOfficeId] = useState<string | null>(null);
+
+  const id = Array.isArray(caseId) ? caseId[0] : caseId;
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await getCaseById(caseId as string);
-        if (data) setCaseDetails(data);
+        const office = await getActiveOffice();
+        if (office) {
+          setOfficeId(office.id);
+          const remoteCase = await getCaseDetails(office.id, id as string);
+          if (remoteCase) {
+            setCaseDetails(remoteCase as CaseT);
+            return;
+          }
+        }
+
+        if (id) {
+          const localCase = await getCaseById(id as string);
+          if (localCase) setCaseDetails(localCase as CaseT);
+        }
       } catch (err) {
         console.log(err);
+        if (id) {
+          const localCase = await getCaseById(id as string);
+          if (localCase) setCaseDetails(localCase as CaseT);
+        }
       } finally {
         setLoading(false);
       }
     }
-    load();
-  }, []);
+    if (id) load();
+    else setLoading(false);
+  }, [id]);
 
   function handleDelete() {
     Alert.alert(
@@ -70,7 +96,11 @@ export default function CaseDetails() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteCase(caseId as string);
+              if (officeId && id) {
+                await deleteRemoteCase(officeId, id as string);
+              } else if (id) {
+                await deleteCase(id as string);
+              }
               router.back();
             } catch (err) {
               console.log(err);
@@ -82,7 +112,11 @@ export default function CaseDetails() {
   }
 
   async function handleUpdate(data: CaseT) {
-    await updateCase(caseId as string, data);
+    if (officeId && id) {
+      await updateRemoteCase(officeId, id as string, data);
+    } else if (id) {
+      await updateCase(id as string, data);
+    }
     setCaseDetails({ ...caseDetails, ...data });
     setIsEditing(false);
   }
@@ -132,11 +166,25 @@ export default function CaseDetails() {
 
         {/* ── status badge ── */}
         <View style={styles.statusRow}>
-          <View style={styles.statusBadge}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>
-              {caseDetails.case_status || "غير محدد"}
-            </Text>
+          <View style={styles.summaryPills}>
+            <View style={styles.statusBadge}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>
+                {caseDetails.case_status || "غير محدد"}
+              </Text>
+            </View>
+            {caseDetails.case_type ? (
+              <View style={styles.metaPill}>
+                <Text style={styles.metaPillText}>{caseDetails.case_type}</Text>
+              </View>
+            ) : null}
+            {caseDetails.case_degree ? (
+              <View style={styles.metaPillAlt}>
+                <Text style={styles.metaPillAltText}>
+                  {caseDetails.case_degree}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -146,6 +194,17 @@ export default function CaseDetails() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <SectionHeader label="ملخص القضية" />
+          <View style={styles.card}>
+            <Field label="رقم القضية" value={caseDetails.case_number} />
+            <View style={styles.fieldDivider} />
+            <Field label="السنة" value={caseDetails.case_year} />
+            <View style={styles.fieldDivider} />
+            <Field label="نوع القضية" value={caseDetails.case_type} />
+            <View style={styles.fieldDivider} />
+            <Field label="الدرجة" value={caseDetails.case_degree} />
+          </View>
+
           <SectionHeader label="بيانات الموكل" />
           <View style={styles.card}>
             <Field label="الاسم" value={caseDetails.client_name} />
@@ -297,10 +356,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
+  summaryPills: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-end",
     backgroundColor: "#f0fdf4",
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -317,6 +382,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#16a34a",
     fontWeight: "600",
+  },
+  metaPill: {
+    backgroundColor: "#eff6ff",
+    borderRadius: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  metaPillText: {
+    color: "#2563eb",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  metaPillAlt: {
+    backgroundColor: "#f5efe5",
+    borderRadius: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  metaPillAltText: {
+    color: "#9a7841",
+    fontSize: 12,
+    fontWeight: "700",
   },
 
   // scroll

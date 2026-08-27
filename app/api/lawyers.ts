@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, uploadRequest } from "./client";
 
 export const getAllLawyersAdmin = () =>
   request<unknown[]>("/api/lawyers/admin");
@@ -25,5 +25,7 @@ export const updateProfilePassword = (lawyerId: string, body: object) =>
     method: "POST",
     body: JSON.stringify(body),
   });
+export const updateLawyerAvatar = (lawyerId: string, formData: FormData) =>
+  uploadRequest(`/api/lawyers/avatar/${lawyerId}`, formData);
 export const deleteLawyer = (lawyerId: string) =>
   request<void>(`/api/lawyers/${lawyerId}`, { method: "DELETE" });

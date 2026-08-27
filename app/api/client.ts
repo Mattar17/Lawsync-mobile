@@ -26,6 +26,21 @@ export async function request<T>(
   return (body.data ?? body) as T;
 }
 
+export async function uploadRequest<T>(path: string, formData: FormData) {
+  const token = await SecureStore.getItemAsync("jwt");
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    body: formData,
+    headers: {
+      "x-api-key": API_KEY ?? "",
+      Authorization: `Bearer ${token ?? ""}`,
+    },
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message || "تعذر رفع الصورة");
+  return (body.data ?? body) as T;
+}
+
 export async function publicRequest<T>(
   path: string,
   options: RequestInit = {},
