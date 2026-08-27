@@ -1,4 +1,4 @@
-import { publicRequest } from "../client";
+import { publicRequest } from "./client";
 
 export const syncCases = (token: string, cases: object[]) =>
   publicRequest<unknown>("/api/sync", {

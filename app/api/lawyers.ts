@@ -1,4 +1,4 @@
-import { request } from "../client";
+import { request } from "./client";
 
 export const getAllLawyersAdmin = () =>
   request<unknown[]>("/api/lawyers/admin");

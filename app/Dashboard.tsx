@@ -22,6 +22,7 @@ const tasks = [
 export default function Dashboard() {
   const currentOffice = useUserStore((state) => state.currentOffice);
   const [cases, setCases] = useState<CaseT[]>([]);
+  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
   useEffect(() => {
     if (!currentOffice) {
       router.replace("/Choice" as never);
@@ -78,35 +79,61 @@ export default function Dashboard() {
             <Feather name="repeat" size={16} color="#b8975a" />
             <Text style={styles.officeSwitcherText}>تغيير المكتب</Text>
           </TouchableOpacity>
-          <View style={styles.quickLinks}>
+          <View style={styles.quickMenu}>
             <TouchableOpacity
-              style={styles.quickLink}
-              onPress={() => router.push("/workspace/Tasks" as never)}
-              accessibilityLabel="المهام"
+              style={styles.menuButton}
+              onPress={() => setIsQuickMenuOpen((isOpen) => !isOpen)}
+              accessibilityLabel="الروابط السريعة"
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isQuickMenuOpen }}
             >
-              <Feather name="check-square" size={18} color="#d1624e" />
+              <Feather
+                name={isQuickMenuOpen ? "x" : "menu"}
+                size={20}
+                color="#0e2038"
+              />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickLink}
-              onPress={() => router.push("/workspace/Members" as never)}
-              accessibilityLabel="الفريق"
-            >
-              <Feather name="users" size={18} color="#3b6fa0" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickLink}
-              onPress={() => router.push("/workspace/Invites" as never)}
-              accessibilityLabel="الدعوات"
-            >
-              <Feather name="mail" size={18} color="#b8975a" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickLink}
-              onPress={() => router.push("/workspace/OfficeSettings" as never)}
-              accessibilityLabel="الإعدادات"
-            >
-              <Feather name="sliders" size={18} color="#7c5cbf" />
-            </TouchableOpacity>
+            {isQuickMenuOpen && (
+              <View style={styles.quickMenuList}>
+                <TouchableOpacity
+                  style={styles.menuLink}
+                  onPress={() => router.push("/workspace/Cases" as never)}
+                >
+                  <Feather name="briefcase" size={17} color="#b8975a" />
+                  <Text style={styles.menuLinkText}>القضايا</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuLink}
+                  onPress={() => router.push("/workspace/Tasks" as never)}
+                >
+                  <Feather name="check-square" size={17} color="#d1624e" />
+                  <Text style={styles.menuLinkText}>المهام</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuLink}
+                  onPress={() => router.push("/workspace/Members" as never)}
+                >
+                  <Feather name="users" size={17} color="#3b6fa0" />
+                  <Text style={styles.menuLinkText}>الفريق</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuLink}
+                  onPress={() => router.push("/workspace/Invites" as never)}
+                >
+                  <Feather name="mail" size={17} color="#b8975a" />
+                  <Text style={styles.menuLinkText}>الدعوات</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuLink}
+                  onPress={() =>
+                    router.push("/workspace/OfficeSettings" as never)
+                  }
+                >
+                  <Feather name="sliders" size={17} color="#7c5cbf" />
+                  <Text style={styles.menuLinkText}>الإعدادات</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
         <Text style={styles.office}>● {currentOffice.name}</Text>
@@ -142,13 +169,6 @@ export default function Dashboard() {
             </View>
           ))}
         </View>
-        <TouchableOpacity
-          style={styles.casesButton}
-          onPress={() => router.push("/workspace/Cases" as never)}
-        >
-          <Text style={styles.casesButtonText}>عرض كل القضايا</Text>
-          <Feather name="arrow-left" size={18} color="#fff" />
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -243,19 +263,8 @@ const styles = StyleSheet.create({
   taskText: { color: "#334155", flex: 1, fontSize: 13, textAlign: "right" },
   done: { color: "#9ca3af", textDecorationLine: "line-through" },
   due: { color: "#7c879b", fontSize: 11 },
-  casesButton: {
-    alignItems: "center",
-    backgroundColor: "#0e2038",
-    borderRadius: 10,
-    flexDirection: "row",
-    gap: 9,
-    justifyContent: "center",
-    marginTop: 18,
-    padding: 15,
-  },
-  casesButtonText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  quickLinks: { flexDirection: "row", gap: 8 },
-  quickLink: {
+  quickMenu: { alignItems: "flex-end", position: "relative", zIndex: 2 },
+  menuButton: {
     alignItems: "center",
     backgroundColor: "#fff",
     borderColor: "#e7e9ee",
@@ -264,5 +273,36 @@ const styles = StyleSheet.create({
     height: 38,
     justifyContent: "center",
     width: 38,
+  },
+  quickMenuList: {
+    backgroundColor: "#fff",
+    borderColor: "#e7e9ee",
+    borderRadius: 12,
+    borderWidth: 1,
+    elevation: 4,
+    padding: 6,
+    position: "absolute",
+    right: 0,
+    shadowColor: "#0e2038",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    top: 46,
+    width: 150,
+  },
+  menuLink: {
+    alignItems: "center",
+    borderRadius: 8,
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  menuLinkText: {
+    color: "#334155",
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "right",
   },
 });

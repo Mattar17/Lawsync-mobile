@@ -1,5 +1,5 @@
-import { CaseT } from "../../types";
-import { request } from "../client";
+import { CaseT } from "../types";
+import { request } from "./client";
 
 export type CreateCaseInput = Omit<CaseT, "id">;
 export type RemoteCase = CaseT & { id: string; title: string };

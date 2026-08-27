@@ -1,4 +1,4 @@
-import { request } from "../client";
+import { request } from "./client";
 
 export type BookCategory = { id: string; name: string; created_at?: string };
 export type Book = {

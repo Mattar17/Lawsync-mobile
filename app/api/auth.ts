@@ -1,5 +1,5 @@
-import type { User } from "../../zustandStore/userStore";
-import { publicRequest } from "../client";
+import type { User } from "../zustandStore/userStore";
+import { publicRequest } from "./client";
 
 export type AuthResponse = {
   success: boolean;
