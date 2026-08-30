@@ -1,4 +1,5 @@
 import { request } from "./client";
+import type { Office } from "./office";
 
 export type InviteRole = "member" | "admin";
 export type InviteStatus =
@@ -14,6 +15,9 @@ export type Invite = {
   role: InviteRole;
   status: InviteStatus | string;
   expires_at?: string;
+  offices?: Office | { id: string; name: string };
+  office?: Office | { id: string; name: string };
+  office_name?: string;
 };
 
 export const getOfficeInvites = (officeId: string) =>

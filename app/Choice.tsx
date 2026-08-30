@@ -3,16 +3,20 @@ import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   Modal,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getMyOffices, type Office } from "./api/office";
+import { getMyInvites, respondToInvite, type Invite } from "./api/invites";
+import { createOffice, getMyOffices, type Office } from "./api/office";
 import { useUserStore } from "./zustandStore/userStore";
 
 const choices = [
@@ -41,20 +45,47 @@ const choices = [
 export default function Choice() {
   const [profileMenuVisible, setProfileMenuVisible] = useState(false);
   const [officePickerVisible, setOfficePickerVisible] = useState(false);
+  const [createOfficeModalVisible, setCreateOfficeModalVisible] =
+    useState(false);
   const [offices, setOffices] = useState<Office[]>([]);
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [officeName, setOfficeName] = useState("");
   const [loadingOffices, setLoadingOffices] = useState(false);
+  const [loadingInvites, setLoadingInvites] = useState(false);
+  const [creatingOffice, setCreatingOffice] = useState(false);
   const user = useUserStore((state) => state.user);
   const clearUser = useUserStore((state) => state.clearUser);
   const setCurrentOffice = useUserStore((state) => state.setCurrentOffice);
 
+  const loadInvites = async () => {
+    setLoadingInvites(true);
+    try {
+      const myInvites = await getMyInvites();
+      setInvites(myInvites);
+    } catch (error) {
+      setInvites([]);
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
   const openOfficePicker = async () => {
     setLoadingOffices(true);
     try {
-      setOffices(await getMyOffices());
-      setOfficePickerVisible(true);
+      const myOffices = await getMyOffices();
+      setOffices(myOffices);
+
+      // If no offices, load invites
+      if (myOffices.length === 0) {
+        await loadInvites();
+        setCreateOfficeModalVisible(true);
+      } else {
+        setOfficePickerVisible(true);
+      }
     } catch {
       setOffices([]);
-      setOfficePickerVisible(true);
+      await loadInvites();
+      setCreateOfficeModalVisible(true);
     } finally {
       setLoadingOffices(false);
     }
@@ -64,6 +95,60 @@ export default function Choice() {
     setCurrentOffice(office);
     setOfficePickerVisible(false);
     router.push("/Dashboard" as never);
+  };
+
+  const handleCreateOffice = async () => {
+    if (!officeName.trim()) {
+      Alert.alert("خطأ", "يرجى إدخال اسم المكتب");
+      return;
+    }
+
+    setCreatingOffice(true);
+    try {
+      const newOffice = await createOffice({
+        name: officeName.trim(),
+      });
+
+      setCurrentOffice(newOffice);
+      setCreateOfficeModalVisible(false);
+      setOfficeName("");
+      setOffices([]);
+      setInvites([]);
+
+      Alert.alert("نجح", "تم إنشاء المكتب بنجاح", [
+        { text: "حسناً", onPress: () => router.push("/Dashboard" as never) },
+      ]);
+    } catch (error) {
+      Alert.alert("خطأ", "فشل إنشاء المكتب: " + (error as Error).message);
+    } finally {
+      setCreatingOffice(false);
+    }
+  };
+
+  const handleInviteResponse = async (
+    inviteId: string,
+    action: "accepted" | "declined",
+  ) => {
+    try {
+      await respondToInvite(inviteId, action);
+
+      if (action === "accepted") {
+        Alert.alert("نجح", "تم قبول الدعوة");
+        // Reload offices to show the newly joined office
+        const myOffices = await getMyOffices();
+        if (myOffices.length > 0) {
+          selectOffice(myOffices[0]);
+        } else {
+          // Reload invites
+          await loadInvites();
+        }
+      } else {
+        Alert.alert("نجح", "تم رفض الدعوة");
+        await loadInvites();
+      }
+    } catch (error) {
+      Alert.alert("خطأ", "فشل معالجة الدعوة: " + (error as Error).message);
+    }
   };
 
   const handleLogout = async () => {
@@ -153,6 +238,106 @@ export default function Choice() {
                 </TouchableOpacity>
               ))
             )}
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={createOfficeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCreateOfficeModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setCreateOfficeModalVisible(false)}
+        >
+          <View style={styles.createOfficeContainer}>
+            <Text style={styles.createOfficeTitle}>إدارة المكاتب</Text>
+
+            {/* Create Office Section */}
+            <View style={styles.createOfficeSection}>
+              <Text style={styles.sectionSubtitle}>إنشاء مكتب جديد</Text>
+              <Text style={styles.createOfficeDescription}>
+                لا تمتلك مكتباً، هل تريد إنشاء مكتبك الخاص؟
+              </Text>
+
+              <TextInput
+                style={styles.officeNameInput}
+                placeholder="اسم المكتب"
+                placeholderTextColor="#9ca3af"
+                value={officeName}
+                onChangeText={setOfficeName}
+                editable={!creatingOffice}
+                maxLength={100}
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.createOfficeButton,
+                  creatingOffice && styles.createOfficeButtonDisabled,
+                ]}
+                onPress={handleCreateOffice}
+                disabled={creatingOffice}
+              >
+                {creatingOffice ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.createOfficeButtonText}>
+                    إنشاء المكتب
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Divider */}
+            {loadingInvites ? (
+              <View style={styles.invitesLoadingContainer}>
+                <ActivityIndicator color="#0e2038" size="small" />
+              </View>
+            ) : invites.length > 0 ? (
+              <>
+                <View style={styles.divider} />
+
+                {/* Invites Section */}
+                <View style={styles.invitesSection}>
+                  <Text style={styles.sectionSubtitle}>دعوات الانضمام</Text>
+                  {invites
+                    .filter((invite) => invite.status === "pending")
+                    .map((invite) => (
+                      <View key={invite.id} style={styles.inviteCard}>
+                        <View style={styles.inviteInfo}>
+                          <Text style={styles.inviteText}>دعوة من مكتب</Text>
+                          <Text style={styles.inviteOfficeId}>
+                            {(invite.offices as { name?: string })?.name ||
+                              (invite.office as { name?: string })?.name ||
+                              invite.office_name ||
+                              invite.office_id}
+                          </Text>
+                        </View>
+                        <View style={styles.inviteActions}>
+                          <TouchableOpacity
+                            style={styles.acceptButton}
+                            onPress={() =>
+                              handleInviteResponse(invite.id, "accepted")
+                            }
+                          >
+                            <Text style={styles.acceptButtonText}>قبول</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.declineButton}
+                            onPress={() =>
+                              handleInviteResponse(invite.id, "declined")
+                            }
+                          >
+                            <Text style={styles.declineButtonText}>رفض</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                </View>
+              </>
+            ) : null}
           </View>
         </Pressable>
       </Modal>
@@ -344,5 +529,126 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 5,
     textAlign: "right",
+  },
+  createOfficeContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 18,
+    width: "100%",
+    maxHeight: "80%",
+  },
+  createOfficeTitle: {
+    color: "#0e2038",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 16,
+    textAlign: "right",
+  },
+  createOfficeSection: {
+    paddingBottom: 12,
+  },
+  sectionSubtitle: {
+    color: "#0e2038",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "right",
+  },
+  createOfficeDescription: {
+    color: "#7c879b",
+    fontSize: 13,
+    marginBottom: 12,
+    textAlign: "right",
+    lineHeight: 18,
+  },
+  officeNameInput: {
+    borderColor: "#e7e9ee",
+    borderRadius: 10,
+    borderWidth: 1,
+    color: "#0e2038",
+    fontSize: 14,
+    marginBottom: 12,
+    padding: 12,
+    textAlign: "right",
+  },
+  createOfficeButton: {
+    alignItems: "center",
+    backgroundColor: "#0e2038",
+    borderRadius: 10,
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  createOfficeButtonDisabled: {
+    opacity: 0.6,
+  },
+  createOfficeButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  divider: {
+    backgroundColor: "#e7e9ee",
+    height: 1,
+    marginVertical: 14,
+  },
+  invitesSection: {
+    paddingTop: 4,
+  },
+  invitesLoadingContainer: {
+    alignItems: "center",
+    marginVertical: 12,
+  },
+  inviteCard: {
+    backgroundColor: "#f9fafb",
+    borderColor: "#e7e9ee",
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 10,
+    padding: 12,
+  },
+  inviteInfo: {
+    marginBottom: 10,
+  },
+  inviteText: {
+    color: "#0e2038",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "right",
+  },
+  inviteOfficeId: {
+    color: "#7c879b",
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "right",
+  },
+  inviteActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  acceptButton: {
+    alignItems: "center",
+    backgroundColor: "#10b981",
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  acceptButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  declineButton: {
+    alignItems: "center",
+    backgroundColor: "#ef4444",
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  declineButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

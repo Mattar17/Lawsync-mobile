@@ -16,7 +16,7 @@ export const register = (body: {
   name: string;
   email: string;
   password: string;
-  phone: string;
+  phone: string | null;
 }) =>
   publicRequest<AuthResponse>("/api/register", {
     method: "POST",

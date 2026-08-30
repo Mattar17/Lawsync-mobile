@@ -1,4 +1,10 @@
+import * as SecureStore from "expo-secure-store";
+import { jwtDecode, JwtPayload } from "jwt-decode";
 import { request } from "./client";
+
+interface MyJwtPayload extends JwtPayload {
+  lawyer_id?: string;
+}
 
 export type OfficeRole = "admin" | "member";
 export type Office = {
@@ -42,3 +48,21 @@ export const removeMember = (officeId: string, memberId: string) =>
   request<void>(`/api/offices/${officeId}/members/${memberId}`, {
     method: "DELETE",
   });
+export const createOffice = async (data: { name: string }) => {
+  const jwt = await SecureStore.getItemAsync("jwt");
+  if (!jwt) {
+    throw new Error("Authentication token not found");
+  }
+
+  const decoded = jwtDecode(jwt) as MyJwtPayload;
+  const lawyerId = decoded.lawyer_id;
+
+  if (!lawyerId) {
+    throw new Error("User ID not found in authentication token");
+  }
+
+  return request<Office>("/api/offices", {
+    method: "POST",
+    body: JSON.stringify({ name: data.name, owner_id: lawyerId }),
+  });
+};
