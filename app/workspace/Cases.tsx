@@ -73,8 +73,8 @@ export default function Cases() {
         ) : (
           <FlatList
             data={cases}
-            scrollEnabled={false}
-            contentContainerStyle={{ paddingTop: 18 }}
+
+            contentContainerStyle={{ paddingTop: 18, paddingBottom: 130 }}
             ListEmptyComponent={
               <Text style={styles.empty}>لا توجد قضايا حتى الآن</Text>
             }
