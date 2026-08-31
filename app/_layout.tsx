@@ -56,10 +56,6 @@ export default function RootLayout() {
         options={{ title: "الدعوات", headerShown: false }}
       />
       <Stack.Screen
-        name="workspace/Members"
-        options={{ title: "أعضاء المكتب", headerShown: false }}
-      />
-      <Stack.Screen
         name="workspace/OfficeSettings"
         options={{ title: "إعدادات المكتب", headerShown: false }}
       />

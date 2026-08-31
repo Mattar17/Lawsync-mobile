@@ -11,13 +11,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getOfficeCases, type RemoteCase } from "../api/cases";
-import { getActiveOffice } from "../api/office";
+import { useUserStore } from "../zustandStore/userStore";
 import { styles } from "./styles";
 import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function Cases() {
   const [cases, setCases] = useState<RemoteCase[]>([]);
   const [loading, setLoading] = useState(true);
+  const office = useUserStore((state) => state.Office);
 
   useFocusEffect(
     useCallback(() => {
@@ -26,13 +27,8 @@ export default function Cases() {
 
       const loadCases = async () => {
         try {
-          const office = await getActiveOffice();
-          if (!office) {
-            if (active) setCases([]);
-            return;
-          }
-
-          const officeCases = await getOfficeCases(office.id);
+          if(!office) return;
+          const officeCases = await getOfficeCases(office?.id);
           if (active) setCases(officeCases);
         } catch {
           if (active) setCases([]);

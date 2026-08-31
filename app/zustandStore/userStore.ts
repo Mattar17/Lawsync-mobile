@@ -21,7 +21,7 @@ export type User = {
 
 type UserStore = {
   user: User | null;
-  currentOffice: Office | null;
+  Office: Office | null;
   setUser: (user: User) => void;
   setCurrentOffice: (office: Office) => void;
   clearUser: () => void;
@@ -31,10 +31,10 @@ export const useUserStore = create<UserStore>()(
   persist(
     (set) => ({
       user: null,
-      currentOffice: null,
+      Office: null,
       setUser: (user) => set({ user }),
-      setCurrentOffice: (office) => set({ currentOffice: office }),
-      clearUser: () => set({ user: null, currentOffice: null }),
+      setCurrentOffice: (office) => set({ Office: office }),
+      clearUser: () => set({ user: null, Office: null }),
     }),
     {
       name: "lawsync-user-store",

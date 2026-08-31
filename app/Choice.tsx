@@ -1,12 +1,15 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { navigate } from "expo-router/build/global-state/routing";
 import * as SecureStore from "expo-secure-store";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,7 +18,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getMyInvites, respondToInvite, type Invite } from "./api/invites";
 import { createOffice, getMyOffices, type Office } from "./api/office";
 import { useUserStore } from "./zustandStore/userStore";
 
@@ -44,58 +46,35 @@ const choices = [
 
 export default function Choice() {
   const [profileMenuVisible, setProfileMenuVisible] = useState(false);
-  const [officePickerVisible, setOfficePickerVisible] = useState(false);
+  //const [officePickerVisible, setOfficePickerVisible] = useState(false);
   const [createOfficeModalVisible, setCreateOfficeModalVisible] =
     useState(false);
-  const [offices, setOffices] = useState<Office[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
   const [officeName, setOfficeName] = useState("");
-  const [loadingOffices, setLoadingOffices] = useState(false);
-  const [loadingInvites, setLoadingInvites] = useState(false);
   const [creatingOffice, setCreatingOffice] = useState(false);
   const user = useUserStore((state) => state.user);
   const clearUser = useUserStore((state) => state.clearUser);
   const setCurrentOffice = useUserStore((state) => state.setCurrentOffice);
+  const currentOffice = useUserStore((state) => state.Office);
 
-  const loadInvites = async () => {
-    setLoadingInvites(true);
-    try {
-      const myInvites = await getMyInvites();
-      setInvites(myInvites);
-    } catch (error) {
-      setInvites([]);
-    } finally {
-      setLoadingInvites(false);
-    }
-  };
 
-  const openOfficePicker = async () => {
-    setLoadingOffices(true);
-    try {
-      const myOffices = await getMyOffices();
-      setOffices(myOffices);
-
-      // If no offices, load invites
-      if (myOffices.length === 0) {
-        await loadInvites();
-        setCreateOfficeModalVisible(true);
-      } else {
-        setOfficePickerVisible(true);
-      }
-    } catch {
-      setOffices([]);
-      await loadInvites();
-      setCreateOfficeModalVisible(true);
-    } finally {
-      setLoadingOffices(false);
-    }
-  };
-
-  const selectOffice = (office: Office) => {
+  const loadOffice = (office: Office) => {
     setCurrentOffice(office);
-    setOfficePickerVisible(false);
+    //setOfficePickerVisible(false);
     router.push("/Dashboard" as never);
   };
+
+  useEffect(() => {
+    const load = async function(){
+      const data = await getMyOffices();
+      console.log("Loaded offices:", data);
+      if (data.length === 0) {
+        console.log(currentOffice);
+        return;
+      }
+      loadOffice(data[0]);
+    }
+    load();
+  }, []);
 
   const handleCreateOffice = async () => {
     if (!officeName.trim()) {
@@ -112,8 +91,6 @@ export default function Choice() {
       setCurrentOffice(newOffice);
       setCreateOfficeModalVisible(false);
       setOfficeName("");
-      setOffices([]);
-      setInvites([]);
 
       Alert.alert("نجح", "تم إنشاء المكتب بنجاح", [
         { text: "حسناً", onPress: () => router.push("/Dashboard" as never) },
@@ -122,32 +99,6 @@ export default function Choice() {
       Alert.alert("خطأ", "فشل إنشاء المكتب: " + (error as Error).message);
     } finally {
       setCreatingOffice(false);
-    }
-  };
-
-  const handleInviteResponse = async (
-    inviteId: string,
-    action: "accepted" | "declined",
-  ) => {
-    try {
-      await respondToInvite(inviteId, action);
-
-      if (action === "accepted") {
-        Alert.alert("نجح", "تم قبول الدعوة");
-        // Reload offices to show the newly joined office
-        const myOffices = await getMyOffices();
-        if (myOffices.length > 0) {
-          selectOffice(myOffices[0]);
-        } else {
-          // Reload invites
-          await loadInvites();
-        }
-      } else {
-        Alert.alert("نجح", "تم رفض الدعوة");
-        await loadInvites();
-      }
-    } catch (error) {
-      Alert.alert("خطأ", "فشل معالجة الدعوة: " + (error as Error).message);
     }
   };
 
@@ -211,7 +162,7 @@ export default function Choice() {
         </Pressable>
       </Modal>
 
-      <Modal
+      {/* <Modal
         visible={officePickerVisible}
         transparent
         animationType="fade"
@@ -230,7 +181,7 @@ export default function Choice() {
                 <TouchableOpacity
                   key={office.id}
                   style={styles.officeOption}
-                  onPress={() => selectOffice(office)}
+                  onPress={() => loadOffice(office)}
                 >
                   <Feather name="briefcase" size={18} color="#b8975a" />
                   <Text style={styles.officeOptionText}>{office.name}</Text>
@@ -240,7 +191,7 @@ export default function Choice() {
             )}
           </View>
         </Pressable>
-      </Modal>
+      </Modal> */}
 
       <Modal
         visible={createOfficeModalVisible}
@@ -248,98 +199,54 @@ export default function Choice() {
         animationType="fade"
         onRequestClose={() => setCreateOfficeModalVisible(false)}
       >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setCreateOfficeModalVisible(false)}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <View style={styles.createOfficeContainer}>
-            <Text style={styles.createOfficeTitle}>إدارة المكاتب</Text>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setCreateOfficeModalVisible(false)}
+          >
+            <View style={styles.createOfficeContainer}>
+              <Text style={styles.createOfficeTitle}>إدارة المكاتب</Text>
 
-            {/* Create Office Section */}
-            <View style={styles.createOfficeSection}>
-              <Text style={styles.sectionSubtitle}>إنشاء مكتب جديد</Text>
-              <Text style={styles.createOfficeDescription}>
-                لا تمتلك مكتباً، هل تريد إنشاء مكتبك الخاص؟
-              </Text>
+              {/* Create Office Section */}
+              <View style={styles.createOfficeSection}>
+                <Text style={styles.sectionSubtitle}>إنشاء مكتب جديد</Text>
+                <Text style={styles.createOfficeDescription}>
+                  لا تمتلك مكتباً، هل تريد إنشاء مكتبك الخاص؟
+                </Text>
 
-              <TextInput
-                style={styles.officeNameInput}
-                placeholder="اسم المكتب"
-                placeholderTextColor="#9ca3af"
-                value={officeName}
-                onChangeText={setOfficeName}
-                editable={!creatingOffice}
-                maxLength={100}
-              />
+                <TextInput
+                  style={styles.officeNameInput}
+                  placeholder="اسم المكتب"
+                  placeholderTextColor="#9ca3af"
+                  value={officeName}
+                  onChangeText={setOfficeName}
+                  editable={!creatingOffice}
+                  maxLength={100}
+                />
 
-              <TouchableOpacity
-                style={[
-                  styles.createOfficeButton,
-                  creatingOffice && styles.createOfficeButtonDisabled,
-                ]}
-                onPress={handleCreateOffice}
-                disabled={creatingOffice}
-              >
-                {creatingOffice ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.createOfficeButtonText}>
-                    إنشاء المكتب
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Divider */}
-            {loadingInvites ? (
-              <View style={styles.invitesLoadingContainer}>
-                <ActivityIndicator color="#0e2038" size="small" />
+                <TouchableOpacity
+                  style={[
+                    styles.createOfficeButton,
+                    creatingOffice && styles.createOfficeButtonDisabled,
+                  ]}
+                  onPress={handleCreateOffice}
+                  disabled={creatingOffice}
+                >
+                  {creatingOffice ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.createOfficeButtonText}>
+                      إنشاء المكتب
+                    </Text>
+                  )}
+                </TouchableOpacity>
               </View>
-            ) : invites.length > 0 ? (
-              <>
-                <View style={styles.divider} />
-
-                {/* Invites Section */}
-                <View style={styles.invitesSection}>
-                  <Text style={styles.sectionSubtitle}>دعوات الانضمام</Text>
-                  {invites
-                    .filter((invite) => invite.status === "pending")
-                    .map((invite) => (
-                      <View key={invite.id} style={styles.inviteCard}>
-                        <View style={styles.inviteInfo}>
-                          <Text style={styles.inviteText}>دعوة من مكتب</Text>
-                          <Text style={styles.inviteOfficeId}>
-                            {(invite.offices as { name?: string })?.name ||
-                              (invite.office as { name?: string })?.name ||
-                              invite.office_name ||
-                              invite.office_id}
-                          </Text>
-                        </View>
-                        <View style={styles.inviteActions}>
-                          <TouchableOpacity
-                            style={styles.acceptButton}
-                            onPress={() =>
-                              handleInviteResponse(invite.id, "accepted")
-                            }
-                          >
-                            <Text style={styles.acceptButtonText}>قبول</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.declineButton}
-                            onPress={() =>
-                              handleInviteResponse(invite.id, "declined")
-                            }
-                          >
-                            <Text style={styles.declineButtonText}>رفض</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
-                </View>
-              </>
-            ) : null}
-          </View>
-        </Pressable>
+            </View>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <View style={styles.header}>
@@ -354,9 +261,8 @@ export default function Choice() {
             activeOpacity={0.85}
             style={styles.card}
             onPress={
-              choice.title === "المكتب" ? openOfficePicker : choice.onPress
+              choice.title === "المكتب" ? (currentOffice ? ()=>navigate("/Dashboard") : ()=>setCreateOfficeModalVisible(true)) : choice.onPress
             }
-            disabled={choice.title === "المكتب" && loadingOffices}
           >
             <View style={[styles.icon, { backgroundColor: choice.color }]}>
               <Feather name={choice.icon} size={25} color="#fff" />

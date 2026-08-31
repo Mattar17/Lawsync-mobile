@@ -15,7 +15,8 @@ import { CaseT } from "./types";
 import { useUserStore } from "./zustandStore/userStore";
 
 export default function Dashboard() {
-  const currentOffice = useUserStore((state) => state.currentOffice);
+  const currentOffice = useUserStore((state) => state.Office);
+  const user = useUserStore.getState().user;
   const [cases, setCases] = useState<CaseT[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
@@ -119,20 +120,6 @@ export default function Dashboard() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.menuLink}
-                  onPress={() => router.push("/workspace/Members" as never)}
-                >
-                  <Feather name="users" size={17} color="#3b6fa0" />
-                  <Text style={styles.menuLinkText}>الفريق</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuLink}
-                  onPress={() => router.push("/workspace/Invites" as never)}
-                >
-                  <Feather name="mail" size={17} color="#b8975a" />
-                  <Text style={styles.menuLinkText}>الدعوات</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuLink}
                   onPress={() =>
                     router.push("/workspace/OfficeSettings" as never)
                   }
@@ -145,7 +132,7 @@ export default function Dashboard() {
           </View>
         </View>
         <Text style={styles.office}>● {currentOffice.name}</Text>
-        <Text style={styles.title}>مرحباً، محمد</Text>
+        <Text style={styles.title}>مرحباً، {user?.name.split(" ")[0]}</Text>
         <Text style={styles.subtitle}>مساحة عملك اليومية</Text>
         <View style={styles.stats}>
           {stats.map((stat) => (
