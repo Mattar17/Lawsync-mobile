@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -94,9 +93,7 @@ export default function Cases() {
                       الموكل: {item.client_name}
                     </Text>
                   </View>
-                  <Text style={styles.badge}>
-                    {item.case_status || "غير محدد"}
-                  </Text>
+                 
                 </View>
                 <View style={styles.row}>
                   <Feather name="calendar" size={15} color="#b8975a" />

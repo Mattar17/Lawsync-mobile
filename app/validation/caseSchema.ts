@@ -1,51 +1,52 @@
 import { z } from "zod";
-import { CASE_DEGREES, CASE_STATUSES, CASE_TYPES } from "../types";
+import { CLIENT_TYPES } from "../types";
 
-const arabicEnglishNameRegex = /^[\u0600-\u06FFa-zA-Z\s]+$/;
+const clientTypeValues = CLIENT_TYPES;
 
-export const caseSchema = z.object({
-  description: z.string(),
-  case_number: z
-    .string()
-    .min(1, "رقم القضية مطلوب")
-    .regex(/^\d+$/, "رقم القضية يجب أن يحتوي على أرقام فقط"),
+export const createCaseSchema = z.object({
+  // Mandatory fields
+  case_number: z.string().min(1, "رقم القضية مطلوب"),
+  case_year: z.string().regex(/^\d{4}$/, "السنة غير صحيحة"),
+  client_name: z.string().min(1, "اسم الموكل مطلوب"),
+  client_opponent_name: z.string().min(1, "اسم الخصم مطلوب"),
 
-  case_year: z.string().regex(/^\d{4}$/, "سنة القضية يجب أن تكون 4 أرقام"),
-
-  client_name: z
-    .string()
-    .min(4, "اسم الموكل يجب أن يحتوي على 4 أحرف على الأقل")
-    .regex(arabicEnglishNameRegex, "اسم الموكل يجب أن يحتوي على حروف فقط"),
-
-  client_opponent_name: z
-    .string()
-    .min(4, "اسم الخصم يجب أن يحتوي على 4 أحرف على الأقل")
-    .regex(arabicEnglishNameRegex, "اسم الخصم يجب أن يحتوي على حروف فقط"),
-
-  client_role: z.enum(["مدعي", "مدعى عليه"], {
-    error: () => ({
-      message: "صفة الموكل يجب أن تكون مدعي أو مدعى عليه",
-    }),
-  }),
-
+  // Optional fields
+  title: z.string().optional().nullable(),
   client_national_id: z
     .string()
-    .regex(/^\d{14}$/, "الرقم القومي للموكل يجب أن يتكون من 14 رقم"),
-
+    .regex(/^\d{14}$/, "الرقم القومي غير صحيح")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   client_opponent_national_id: z
     .string()
-    .regex(/^\d{14}$/, "الرقم القومي للخصم يجب أن يتكون من 14 رقم"),
-
-  latest_court_session_date: z.string().min(1, "تاريخ الجلسة الماضية مطلوب"),
-
-  next_court_session_date: z.string().min(1, "تاريخ الجلسة القادمة مطلوب"),
-
-  case_status: z.enum(CASE_STATUSES, {
-    error: () => ({ message: "اختر حالة قضية صحيحة" }),
-  }),
-  case_type: z.enum(CASE_TYPES).optional(),
-  case_degree: z.enum(CASE_DEGREES).optional(),
+    .regex(/^\d{14}$/, "الرقم القومي غير صحيح")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  client_role: z.string().optional().nullable().or(z.literal("")),
+  case_type: z.string().optional().nullable().or(z.literal("")),
+  case_degree: z.string().optional().nullable().or(z.literal("")),
+  client_type: z.enum(clientTypeValues).optional().nullable(),
+  assigned_lawyer_id: z.string().uuid("معرف المحامي غير صالح").optional().nullable(),
+  closed_at: z.string().optional().nullable(),
+  court_circuit: z.string().optional().nullable(),
+  court_name: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  latest_court_session_date: z
+    .string()
+    .optional()
+    .nullable()
+    .refine(
+      (date) => !date || new Date(date) <= new Date(),
+      "تاريخ آخر جلسة لا يمكن أن يكون في المستقبل",
+    ),
+  latest_update: z.string().optional().nullable(),
+  next_court_session_date: z.string().optional().nullable(),
+  opened_at: z.string().optional(),
 });
 
-export type CaseFormData = z.infer<typeof caseSchema>;
+export { clientTypeValues };
+export const caseSchema = createCaseSchema;
+export type CaseFormData = z.infer<typeof createCaseSchema>;
 export default caseSchema;
