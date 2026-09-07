@@ -2,23 +2,22 @@ import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
-  deleteCase as deleteRemoteCase,
-  getCaseDetails,
-  updateCase as updateRemoteCase,
+    deleteCase as deleteRemoteCase,
+    getCaseDetails,
+    updateCase as updateRemoteCase,
 } from "./api/cases";
 import { getActiveOffice } from "./api/office";
 import CaseForm from "./components/CaseForm";
-import { deleteCase, getCaseById, updateCase } from "./database";
 import { CaseT } from "./types";
 
 // ─── small presentational components ──────────────────────────────────────────
@@ -32,7 +31,7 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-function Field({ label, value }: { label: string; value?: string }) {
+function Field({ label, value }: { label: string; value?: string | null }) {
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -67,16 +66,16 @@ export default function CaseDetails() {
           }
         }
 
-        if (id) {
-          const localCase = await getCaseById(id as string);
-          if (localCase) setCaseDetails(localCase as CaseT);
-        }
+        // if (id) {
+        //   const localCase = await getCaseById(id as string);
+        //   if (localCase) setCaseDetails(localCase as CaseT);
+        // }
       } catch (err) {
         console.log(err);
-        if (id) {
-          const localCase = await getCaseById(id as string);
-          if (localCase) setCaseDetails(localCase as CaseT);
-        }
+        // if (id) {
+        //   const localCase = await getCaseById(id as string);
+        //   if (localCase) setCaseDetails(localCase as CaseT);
+        // }
       } finally {
         setLoading(false);
       }
@@ -99,7 +98,7 @@ export default function CaseDetails() {
               if (officeId && id) {
                 await deleteRemoteCase(officeId, id as string);
               } else if (id) {
-                await deleteCase(id as string);
+                // await deleteCase(id as string);
               }
               router.back();
             } catch (err) {
@@ -115,7 +114,7 @@ export default function CaseDetails() {
     if (officeId && id) {
       await updateRemoteCase(officeId, id as string, data);
     } else if (id) {
-      await updateCase(id as string, data);
+      // await updateCase(id as string, data);
     }
     setCaseDetails({ ...caseDetails, ...data });
     setIsEditing(false);
@@ -141,7 +140,9 @@ export default function CaseDetails() {
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>تفاصيل القضية</Text>
+            <Text style={styles.headerTitle}>
+              {caseDetails.title || "تفاصيل القضية"}
+            </Text>
             <Text style={styles.headerSubtitle}>
               {caseDetails.case_number} / {caseDetails.case_year}
             </Text>
@@ -196,6 +197,12 @@ export default function CaseDetails() {
         >
           <SectionHeader label="ملخص القضية" />
           <View style={styles.card}>
+            {caseDetails.title ? (
+              <>
+                <Field label="عنوان القضية" value={caseDetails.title} />
+                <View style={styles.fieldDivider} />
+              </>
+            ) : null}
             <Field label="رقم القضية" value={caseDetails.case_number} />
             <View style={styles.fieldDivider} />
             <Field label="السنة" value={caseDetails.case_year} />
@@ -215,6 +222,12 @@ export default function CaseDetails() {
               label="الرقم القومي"
               value={caseDetails.client_national_id}
             />
+            {caseDetails.client_type ? (
+              <>
+                <View style={styles.fieldDivider} />
+                <Field label="نوع الموكل" value={caseDetails.client_type} />
+              </>
+            ) : null}
           </View>
 
           <SectionHeader label="بيانات الخصم" />

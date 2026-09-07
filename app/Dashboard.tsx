@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getOfficeTasks, Task } from "./api/tasks";
-import { CreateCasesTable, getAllCases } from "./database";
 import { CaseT } from "./types";
 import { useUserStore } from "./zustandStore/userStore";
 
@@ -27,9 +26,9 @@ export default function Dashboard() {
       return;
     }
     setTasksLoading(true);
-    CreateCasesTable().then(() =>
-      getAllCases().then((items) => setCases(items as CaseT[])),
-    );
+    // CreateCasesTable().then(() =>
+    //   getAllCases().then((items) => setCases(items as CaseT[])),
+    // );
     getOfficeTasks(currentOffice.id)
       .then(setTasks)
       .catch(() => setTasks([]))

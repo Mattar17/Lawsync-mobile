@@ -115,7 +115,18 @@ export default function Tasks() {
       getOfficeCases(office.id),
     ]);
     setTasks(officeTasks);
-    setCases(officeCases.map(({ id, title }) => ({ id, title })));
+    setCases(
+      officeCases.map((c) => ({
+        id: c.id,
+        title:
+          c.title ||
+          (c.client_name && c.client_opponent_name
+            ? `${c.client_name} ضد ${c.client_opponent_name}`
+            : c.case_number
+              ? `قضية رقم ${c.case_number} / ${c.case_year}`
+              : "قضية بدون عنوان"),
+      })),
+    );
   };
 
   useEffect(() => {
