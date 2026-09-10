@@ -23,7 +23,7 @@ export type User = {
 type UserStore = {
   user: User | null;
   Office: Office | null;
-  setUser: (user: User) => void;
+  setUser: (user: User | null) => void;
   setCurrentOffice: (office: Office) => void;
   clearUser: () => void;
 };

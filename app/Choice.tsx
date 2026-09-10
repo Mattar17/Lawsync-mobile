@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createOffice, getMyOffices, type Office } from "./api/office";
-import { authStorage } from "./utils/authStorage";
+import { Logout } from "./utils/Logout";
 import { useUserStore } from "./zustandStore/userStore";
 
 const choices = [
@@ -59,8 +59,6 @@ export default function Choice() {
 
   const loadOffice = (office: Office) => {
     setCurrentOffice(office);
-    //setOfficePickerVisible(false);
-    router.push("/Dashboard" as never);
   };
 
   useEffect(() => {
@@ -104,9 +102,7 @@ export default function Choice() {
 
   const handleLogout = async () => {
     setProfileMenuVisible(false);
-    await authStorage.clearTokens();
-    clearUser();
-    router.replace("/Login");
+    Logout();
   };
 
   return (

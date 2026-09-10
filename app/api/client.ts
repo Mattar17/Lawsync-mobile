@@ -2,6 +2,7 @@ import axios, { type AxiosRequestConfig, type Method } from "axios";
 import { authStorage } from "../utils/authStorage";
 import apiClient from "../utils/refreshToken";
 
+console.log(process.env.EXPO_PUBLIC_API_URL)
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
 
@@ -114,7 +115,7 @@ export async function publicRequest<T>(
     try {
       requestData = JSON.parse(requestData);
     } catch {
-      // keep as string if not valid JSON
+      console.log("error here in catch")
     }
   }
 
@@ -140,7 +141,11 @@ export async function publicRequest<T>(
       body: response.data,
     };
   } catch (error: any) {
-    console.error("Public request network error:", error);
-    throw error;
-  }
+  console.error("Public request network error:", {
+    message: error.message,
+    code: error.code, 
+    url: error.config?.baseURL + (error.config?.url || ""),
+  });
+  throw error;
+}
 }

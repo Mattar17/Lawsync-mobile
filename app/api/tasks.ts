@@ -6,7 +6,6 @@ export type Task = {
   description?: string | null;
   notes?: string | null;
   due_date?: string | null;
-  status: string;
   case_id?: string | null;
   assigned_lawyer_id?: string | null;
 };
@@ -15,11 +14,13 @@ export const getOfficeTasks = (officeId: string) =>
   request<Task[]>(`/api/offices/${officeId}/tasks`);
 export const getTaskDetails = (officeId: string, taskId: string) =>
   request<Task>(`/api/offices/${officeId}/tasks/${taskId}`);
-export const createTask = (officeId: string, body: object) =>
-  request<Task>(`/api/offices/${officeId}/tasks`, {
+export const createTask = (officeId: string, body: object) =>{
+
+  console.log("Task Body",body);
+  return request<Task>(`/api/offices/${officeId}/tasks`, {
     method: "POST",
     body: JSON.stringify(body),
-  });
+  });}
 export const updateTask = (officeId: string, taskId: string, body: object) =>
   request<Task>(`/api/offices/${officeId}/tasks/${taskId}`, {
     method: "PATCH",

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { authStorage } from "./authStorage";
+import { Logout } from "./Logout";
 
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
@@ -59,7 +60,7 @@ apiClient.interceptors.response.use(
     }
 
     if (originalRequest.url?.includes("/api/auth")) {
-      // TODO: call logout function
+      Logout();
       return Promise.reject(error);
     }
 
@@ -79,24 +80,29 @@ apiClient.interceptors.response.use(
 
     try {
       const tokens = await authStorage.getTokens();
-
+      console.log(`[Tokens]: ${tokens.accessToken} /// ${tokens.refreshToken}`)
       if (!tokens?.refreshToken) {
         throw new Error("No refresh token available");
       }
 
-      const res = await axios.post(
-        `${BASE_URL}/api/auth/refresh`,
-        {},
-        {
-          headers: {
-            "x-api-key": process.env.EXPO_PUBLIC_API_KEY,
-            Cookie: `refreshToken=${tokens.refreshToken}`,
-          },
-        }
-      );
-      
-      const newAccessToken = res.data.accessToken;
-      const newRefreshToken = res.data.newRefreshToken ?? tokens.refreshToken;
+    const res = await axios.post(
+  `${BASE_URL}/api/auth/refresh`,
+  { refreshToken: tokens.refreshToken }, // <--- Send in the body
+  {
+    headers: {
+      "x-api-key": process.env.EXPO_PUBLIC_API_KEY,
+      "x-client-type": "mobile",
+    },
+  }
+);
+      console.log(`[Refresh Response:] ${res.data}`)
+      const responseData = res.data?.data || res.data;
+      const newAccessToken = responseData.accessToken;
+      const newRefreshToken = responseData.refreshToken;
+
+      if (!newAccessToken || !newRefreshToken) {
+        throw new Error("Invalid token payload received from refresh endpoint");
+      }
 
       await authStorage.saveTokens(newAccessToken, newRefreshToken);
 
@@ -106,7 +112,7 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      // TODO: call logout function (clear storage, redirect to login screen)
+      Logout();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

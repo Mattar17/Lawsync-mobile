@@ -26,13 +26,11 @@ import {
 import { styles } from "./styles";
 import WorkspaceHeader from "./WorkspaceHeader";
 
-const statuses = ["لم تبدأ", "قيد التنفيذ", "مكتملة"];
 
 type TaskForm = {
   title: string;
   description: string;
   due_date: string;
-  status: string;
   case_id: string | null;
 };
 
@@ -40,7 +38,6 @@ const emptyForm: TaskForm = {
   title: "",
   description: "",
   due_date: "",
-  status: statuses[0],
   case_id: null,
 };
 
@@ -149,7 +146,6 @@ export default function Tasks() {
       title: task.title,
       description: task.description ?? "",
       due_date: task.due_date ?? "",
-      status: task.status,
       case_id: task.case_id ?? null,
     });
     setShowDueDatePicker(false);
@@ -216,7 +212,6 @@ export default function Tasks() {
     ]);
   };
 
-  const completed = tasks.filter((task) => task.status === "مكتملة").length;
   const selectedCaseTitle =
     cases.find((caseItem) => caseItem.id === form.case_id)?.title ??
     "اختيار القضية";
@@ -228,22 +223,7 @@ export default function Tasks() {
         <Text style={styles.kicker}>مساحة العمل اليومية</Text>
         <Text style={styles.title}>المهام</Text>
         <Text style={styles.subtitle}>إدارة مهام المكتب ومتابعة الإنجاز</Text>
-        <View style={styles.stats}>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>إجمالي المهام</Text>
-            <Text style={styles.statValue}>{tasks.length}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>مكتملة</Text>
-            <Text style={styles.statValue}>{completed}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>قيد التنفيذ</Text>
-            <Text style={styles.statValue}>
-              {tasks.filter((task) => task.status === "قيد التنفيذ").length}
-            </Text>
-          </View>
-        </View>
+        
         <TouchableOpacity style={styles.action} onPress={openCreateModal}>
           <Feather name="plus" size={18} color="#fff" />
           <Text style={styles.actionText}>مهمة جديدة</Text>
@@ -261,24 +241,12 @@ export default function Tasks() {
                   style={styles.row}
                   onPress={() => openEditModal(task)}
                 >
-                  <Feather
-                    name={task.status === "مكتملة" ? "check-circle" : "circle"}
-                    size={19}
-                    color={task.status === "مكتملة" ? "#2f9e6e" : "#d1624e"}
-                  />
+                  
                   <View style={styles.rowCopy}>
                     <Text
-                      style={[
-                        styles.rowTitle,
-                        task.status === "مكتملة" && {
-                          textDecorationLine: "line-through",
-                          color: "#9ca3af",
-                        },
-                      ]}
                     >
                       {task.title}
                     </Text>
-                    <Text style={styles.rowMeta}>{task.status}</Text>
                   </View>
                   <Feather name="chevron-left" size={16} color="#9ca3af" />
                 </TouchableOpacity>
@@ -365,16 +333,6 @@ export default function Tasks() {
                   ) : null}
 
                   <Text style={styles.label}>الحالة</Text>
-                  <RadioGroup
-                    value={form.status}
-                    onChange={(status) =>
-                      setForm((current) => ({ ...current, status }))
-                    }
-                    options={statuses.map((status) => ({
-                      label: status,
-                      value: status,
-                    }))}
-                  />
 
                   <Text style={styles.label}>القضية المرتبطة</Text>
                   <View style={styles.linkedCaseActions}>
