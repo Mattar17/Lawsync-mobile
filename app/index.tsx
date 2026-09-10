@@ -1,14 +1,15 @@
 import LoadingScreen from "@/app/components/LoadingScreen";
 import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import { useEffect, useState } from "react";
 import { getLawyerById } from "./api/lawyers";
+import { authStorage } from "./utils/authStorage";
 import { useUserStore } from "./zustandStore/userStore";
 
 interface MyJwtPayload extends JwtPayload {
   lawyer_id?: string;
   lawyer_email?: string;
+  is_admin?:boolean;
 }
 
 export default function Index() {
@@ -17,9 +18,9 @@ export default function Index() {
   useEffect(() => {
     async function init() {
       try {
-        const token = await SecureStore.getItemAsync("jwt");
+        const {accessToken} = await authStorage.getTokens();
 
-        if (!token) {
+        if (!accessToken) {
           router.replace("/Login");
           return;
         }
@@ -28,7 +29,7 @@ export default function Index() {
         const currentUser = useUserStore.getState().user;
         if (!currentUser) {
           try {
-            const decoded = jwtDecode<MyJwtPayload>(token);
+            const decoded = jwtDecode<MyJwtPayload>(accessToken);
             if (decoded.lawyer_id) {
               const data = await getLawyerById(decoded.lawyer_id);
               const profile =
@@ -40,6 +41,7 @@ export default function Index() {
                   id: (profile as any).id || decoded.lawyer_id,
                   name: (profile as any).name || "",
                   bio: (profile as any).bio || "",
+                  email: (profile as any).email || decoded.lawyer_email || "",
                   pictureUrl:
                     (profile as any).picture_url ||
                     (profile as any).pictureUrl ||

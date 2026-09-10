@@ -4,14 +4,15 @@ import { publicRequest } from "./client";
 export type AuthResponse = {
   success: boolean;
   message?: string;
-  data?: { token: string; user: User };
+  data?: { accessToken: string;refreshToken:string; user: User };
 };
 
 export const login = (email: string, password: string) =>
   publicRequest<AuthResponse>("/api/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    data: { email, password },
   });
+
 export const register = (body: {
   name: string;
   email: string;
@@ -20,5 +21,6 @@ export const register = (body: {
 }) =>
   publicRequest<AuthResponse>("/api/register", {
     method: "POST",
-    body: JSON.stringify(body),
+    data: body,
   });
+

@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { login } from "./api/auth";
+import { authStorage } from "./utils/authStorage";
 import { useUserStore } from "./zustandStore/userStore";
 
 interface MyJwtPayload extends JwtPayload {
@@ -160,24 +161,21 @@ const Login = ({ navigation }: Props) => {
   };
 
   const handleSubmit = async () => {
-    console.log("Submitting ....");
     if (remember) {
       await SecureStore.setItemAsync("savedEmail", email);
     } else {
       await SecureStore.deleteItemAsync("savedEmail");
     }
-    console.log("After remember ....");
-
     setLoading(true);
     try {
-      const { response: res, body: data } = await login(email, password);
-      console.log(data);
+      const { response: res, body:data } = await login(email, password);
+      console.log("[Login DATA]",data);
       if (!res.ok || !data.success || !data.data) {
         showToast(data.message || "فشل تسجيل الدخول");
         return;
       }
 
-      await SecureStore.setItemAsync("jwt", data.data.token);
+      await authStorage.saveTokens(data.data.accessToken,data.data.refreshToken)
       useUserStore.getState().setUser(data.data.user);
       router.navigate("/");
     } catch (err) {

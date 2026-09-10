@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { navigate } from "expo-router/build/global-state/routing";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createOffice, getMyOffices, type Office } from "./api/office";
+import { authStorage } from "./utils/authStorage";
 import { useUserStore } from "./zustandStore/userStore";
 
 const choices = [
@@ -104,7 +104,7 @@ export default function Choice() {
 
   const handleLogout = async () => {
     setProfileMenuVisible(false);
-    await SecureStore.deleteItemAsync("jwt");
+    await authStorage.clearTokens();
     clearUser();
     router.replace("/Login");
   };

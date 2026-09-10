@@ -1,57 +1,146 @@
-import * as SecureStore from "expo-secure-store";
+import axios, { type AxiosRequestConfig, type Method } from "axios";
+import { authStorage } from "../utils/authStorage";
+import apiClient from "../utils/refreshToken";
 
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
 
-async function getHeaders() {
-  const token = await SecureStore.getItemAsync("jwt");
-  return {
+apiClient.interceptors.request.use(
+  async (config) => {
+    const { accessToken } = await authStorage.getTokens();
+    console.log("[access token:]",accessToken)
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+export const publicApiClient = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    "x-client-type": "mobile",
     "Content-Type": "application/json",
     "x-api-key": API_KEY ?? "",
-    Authorization: `Bearer ${token ?? ""}`,
+  },
+});
+
+export interface CustomRequestOptions extends AxiosRequestConfig {
+  body?: any;
+}
+
+export interface PublicResponse<T> {
+  response: {
+    ok: boolean;
+    status: number;
+    headers: any;
   };
+  body: T;
 }
 
 export async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: CustomRequestOptions = {},
 ): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: { ...(await getHeaders()), ...(options.headers ?? {}) },
-  });
-  const body = await response.json();
-  console.log("Request to:", path, "Response:", response.status, body);
-  if (!response.ok) throw new Error(body.message || "تعذر تنفيذ الطلب");
-  return (body.data ?? body) as T;
+  const { body, data, method = "GET", headers, ...restOptions } = options;
+
+  let requestData = data ?? body;
+  if (typeof requestData === "string") {
+    try {
+      requestData = JSON.parse(requestData);
+    } catch {
+      // keep as string if not valid JSON
+    }
+  }
+
+  try {
+    const response = await apiClient.request<any>({
+      url: path,
+      method: (method as Method) || "GET",
+      data: requestData,
+      headers,
+      ...restOptions,
+    });
+
+    console.log("Request to:", path, "Response:", response.status, response.data);
+    return (response.data?.data ?? response.data) as T;
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const responseData = error.response?.data;
+      console.log("Request error to:", path, "Status:", status, responseData);
+
+      const errorMessage =
+        responseData?.message ||
+        (status ? `خطأ في الخادم (${status})` : "تعذر تنفيذ الطلب");
+
+      throw new Error(errorMessage);
+    }
+
+    throw error;
+  }
 }
 
-export async function uploadRequest<T>(path: string, formData: FormData) {
-  const token = await SecureStore.getItemAsync("jwt");
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method: "POST",
-    body: formData,
-    headers: {
-      "x-api-key": API_KEY ?? "",
-      Authorization: `Bearer ${token ?? ""}`,
-    },
-  });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.message || "تعذر رفع الصورة");
-  return (body.data ?? body) as T;
+export async function uploadRequest<T>(
+  path: string,
+  formData: FormData,
+): Promise<T> {
+  try {
+    const response = await apiClient.post<any>(path, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return (response.data?.data ?? response.data) as T;
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.message || "تعذر رفع الصورة";
+      throw new Error(errorMessage);
+    }
+    throw new Error(error?.message || "تعذر رفع الصورة");
+  }
 }
 
 export async function publicRequest<T>(
   path: string,
-  options: RequestInit = {},
-): Promise<{ response: Response; body: T }> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": API_KEY ?? "",
-      ...(options.headers ?? {}),
-    },
-  });
-  return { response, body: (await response.json()) as T };
+  options: CustomRequestOptions = {},
+): Promise<PublicResponse<T>> {
+  const { body, data, method = "GET", headers, ...restOptions } = options;
+
+  let requestData = data ?? body;
+  if (typeof requestData === "string") {
+    try {
+      requestData = JSON.parse(requestData);
+    } catch {
+      // keep as string if not valid JSON
+    }
+  }
+
+  try {
+    const response = await publicApiClient.request<T>({
+      url: path,
+      method: (method as Method) || "GET",
+      data: requestData,
+      headers,
+      validateStatus: () => true, // Don't throw on error status codes so caller can check res.ok
+      ...restOptions,
+    });
+
+    console.log("Raw Login Response Body:", response.data);
+    console.log("Raw Response Headers:", response.headers);
+
+    return {
+      response: {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        headers: response.headers,
+      },
+      body: response.data,
+    };
+  } catch (error: any) {
+    console.error("Public request network error:", error);
+    throw error;
+  }
 }

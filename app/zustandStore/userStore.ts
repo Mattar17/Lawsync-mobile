@@ -17,6 +17,7 @@ export type User = {
   name: string;
   bio: string;
   pictureUrl: string;
+  email:string;
 };
 
 type UserStore = {

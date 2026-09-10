@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useState } from "react";
 import {
@@ -23,6 +22,7 @@ import {
   updateLawyerInfo,
   updateProfilePassword,
 } from "./api/lawyers";
+import { authStorage } from "./utils/authStorage";
 import { useUserStore } from "./zustandStore/userStore";
 
 type LawyerProfile = {
@@ -38,10 +38,10 @@ type Message = { type: "success" | "error"; text: string };
 type JwtProfile = { lawyer_id?: string; lawyer_email?: string };
 
 async function getAuthenticatedProfileId() {
-  const token = await SecureStore.getItemAsync("jwt");
-  if (!token) return null;
+  const {accessToken} = await authStorage.getTokens();
+  if (!accessToken) return null;
   try {
-    return jwtDecode<JwtProfile>(token).lawyer_id ?? null;
+    return jwtDecode<JwtProfile>(accessToken).lawyer_id ?? null;
   } catch {
     return null;
   }

@@ -1,5 +1,5 @@
-import * as SecureStore from "expo-secure-store";
 import { jwtDecode, JwtPayload } from "jwt-decode";
+import { authStorage } from "../utils/authStorage";
 import { request } from "./client";
 
 interface MyJwtPayload extends JwtPayload {
@@ -27,12 +27,12 @@ export const getActiveOffice = async () => {
   const offices = await getMyOffices();
   return offices[0] ?? null;
 };
-export const getMyOffices = async () => {
-  const memberships = await request<{ offices: Office }[]>("/api/offices/me");
-  return memberships
-    .map((membership) => membership.offices)
-    .filter((office): office is Office => Boolean(office));
+export const getMyOffices = async() : Promise<Office[]> => {
+  const memberships = await request<{ offices: Office[] }[]>("/api/offices/me");
+  console.log(memberships);
+  return memberships.flatMap((membership) => membership.offices ?? [])
 };
+
 export const getOffice = (officeId: string) =>
   request<Office>(`/api/offices/${officeId}`);
 export const updateOffice = (officeId: string, body: object) =>
@@ -49,12 +49,12 @@ export const removeMember = (officeId: string, memberId: string) =>
     method: "DELETE",
   });
 export const createOffice = async (data: { name: string }) => {
-  const jwt = await SecureStore.getItemAsync("jwt");
-  if (!jwt) {
+  const {accessToken} = await authStorage.getTokens();
+  if (!accessToken) {
     throw new Error("Authentication token not found");
   }
 
-  const decoded = jwtDecode(jwt) as MyJwtPayload;
+  const decoded = jwtDecode(accessToken) as MyJwtPayload;
   const lawyerId = decoded.lawyer_id;
 
   if (!lawyerId) {
