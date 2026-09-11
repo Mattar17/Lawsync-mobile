@@ -2,17 +2,16 @@ import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getOfficeCases, type RemoteCase } from "../api/cases";
 import { useUserStore } from "../zustandStore/userStore";
 import { styles } from "./styles";
-import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function Cases() {
   const [cases, setCases] = useState<RemoteCase[]>([]);
@@ -44,7 +43,17 @@ export default function Cases() {
   );
   return (
     <SafeAreaView style={styles.root}>
-      <WorkspaceHeader title="القضايا" />
+      <View style={styles.backRow}>
+        <TouchableOpacity
+          onPress={() => router.replace("/Dashboard" as never)}
+          style={styles.backButton}
+          activeOpacity={0.7}
+          accessibilityLabel="الرجوع إلى لوحة التحكم"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="arrow-left" size={24} color="#b89355" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.content}>
         <Text style={styles.kicker}>مساحة العمل اليومية</Text>
         <View style={styles.titleRow}>

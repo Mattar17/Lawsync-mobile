@@ -1,3 +1,5 @@
+import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,7 +17,6 @@ import {
   updateOffice,
 } from "../api/office";
 import { styles } from "./styles";
-import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function OfficeSettings() {
   const [office, setOffice] = useState<Office | null>(null);
@@ -33,12 +34,13 @@ export default function OfficeSettings() {
         (active) =>
           active &&
           getOffice(active.id).then((data) => {
-            setOffice(data);
+            const {office} = data
+            setOffice(office);
             setForm({
-              name: data.name ?? "",
-              address: data.address ?? "",
-              phone: data.phone ?? "",
-              description: data.description ?? "",
+              name: office.name ?? "",
+              address: office.address ?? "",
+              phone: office.phone ?? "",
+              description: office.description ?? "",
             });
           }),
       )
@@ -61,13 +63,33 @@ export default function OfficeSettings() {
   if (loading)
     return (
       <SafeAreaView style={styles.root}>
-        <WorkspaceHeader title="إعدادات المكتب" />
+        <View style={styles.backRow}>
+          <TouchableOpacity
+            onPress={() => router.replace("/Dashboard" as never)}
+            style={styles.backButton}
+            activeOpacity={0.7}
+            accessibilityLabel="الرجوع إلى لوحة التحكم"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="arrow-left" size={24} color="#b89355" />
+          </TouchableOpacity>
+        </View>
         <ActivityIndicator style={{ marginTop: 60 }} color="#b8975a" />
       </SafeAreaView>
     );
   return (
     <SafeAreaView style={styles.root}>
-      <WorkspaceHeader title="إعدادات المكتب" />
+      <View style={styles.backRow}>
+        <TouchableOpacity
+          onPress={() => router.replace("/Dashboard" as never)}
+          style={styles.backButton}
+          activeOpacity={0.7}
+          accessibilityLabel="الرجوع إلى لوحة التحكم"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="arrow-left" size={24} color="#b89355" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.content}>
         <Text style={styles.kicker}>إدارة المكتب</Text>
         <Text style={styles.title}>إعدادات المكتب</Text>
@@ -89,6 +111,7 @@ export default function OfficeSettings() {
                   setForm((current) => ({ ...current, [key]: value }))
                 }
                 placeholder={placeholder}
+                placeholderTextColor="#96a7bb"
                 multiline={key === "description"}
                 style={[
                   styles.input,

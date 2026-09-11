@@ -3,6 +3,20 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#f5f6f8" },
   content: { padding: 20, paddingBottom: 40 },
+  backRow: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  backButton: {
+    height: 38,
+    width: 38,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   header: {
     alignItems: "center",
     backgroundColor: "#fff",
@@ -81,9 +95,9 @@ export const styles = StyleSheet.create({
     gap: 7,
     justifyContent: "center",
     marginTop: 16,
-    padding: 14,
+    padding: 8,
   },
-  actionText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  actionText: { color: "#fff", fontSize: 13, fontWeight: "500" },
   input: {
     borderColor: "#dfe3e8",
     borderRadius: 9,

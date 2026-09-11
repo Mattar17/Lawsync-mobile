@@ -98,7 +98,7 @@ apiClient.interceptors.response.use(
       console.log(`[Refresh Response:] ${res.data}`)
       const responseData = res.data?.data || res.data;
       const newAccessToken = responseData.accessToken;
-      const newRefreshToken = responseData.refreshToken;
+      const newRefreshToken = responseData.newRefreshToken;
 
       if (!newAccessToken || !newRefreshToken) {
         throw new Error("Invalid token payload received from refresh endpoint");
