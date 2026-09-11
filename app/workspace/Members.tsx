@@ -1,21 +1,21 @@
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  getActiveOffice,
-  getMembers,
-  removeMember,
-  type Member,
+    getActiveOffice,
+    getMembers,
+    removeMember,
+    type Member,
 } from "../api/office";
 import { styles } from "./styles";
-import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function Members() {
   const [officeId, setOfficeId] = useState("");
@@ -55,7 +55,17 @@ export default function Members() {
     );
   return (
     <SafeAreaView style={styles.root}>
-      <WorkspaceHeader title="أعضاء المكتب" />
+      <View style={styles.backRow}>
+        <TouchableOpacity
+          onPress={() => router.replace("/Dashboard" as never)}
+          style={styles.backButton}
+          activeOpacity={0.7}
+          accessibilityLabel="الرجوع إلى لوحة التحكم"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="arrow-left" size={24} color="#b89355" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.content}>
         <Text style={styles.kicker}>إدارة المكتب</Text>
         <Text style={styles.title}>فريق المكتب</Text>

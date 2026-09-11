@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,6 +9,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -23,8 +25,8 @@ import {
   type Task,
   updateTask,
 } from "../api/tasks";
+import { formatDueDate } from "../components/DashboardCalendar";
 import { styles } from "./styles";
-import WorkspaceHeader from "./WorkspaceHeader";
 
 
 type TaskForm = {
@@ -218,40 +220,77 @@ export default function Tasks() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <WorkspaceHeader title="المهام" />
+      <View style={styles.backRow}>
+        <TouchableOpacity
+          onPress={() => router.replace("/Dashboard" as never)}
+          style={styles.backButton}
+          activeOpacity={0.7}
+          accessibilityLabel="الرجوع إلى لوحة التحكم"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="arrow-left" size={24} color="#b89355" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.content}>
         <Text style={styles.kicker}>مساحة العمل اليومية</Text>
-        <Text style={styles.title}>المهام</Text>
-        <Text style={styles.subtitle}>إدارة مهام المكتب ومتابعة الإنجاز</Text>
-        
-        <TouchableOpacity style={styles.action} onPress={openCreateModal}>
-          <Feather name="plus" size={18} color="#fff" />
-          <Text style={styles.actionText}>مهمة جديدة</Text>
-        </TouchableOpacity>
+        <View style={styles.titleRow}>
+          <TouchableOpacity
+            style={[
+              styles.action,
+              { marginTop: 0, marginLeft: 12, padding: 11 },
+            ]}
+            onPress={openCreateModal}
+          >
+            <Feather name="plus" size={17} color="#fff" />
+            <Text style={styles.actionText}>عمل جديد</Text>
+          </TouchableOpacity>
+          <View style={styles.titleCopy}>
+            <Text style={styles.title}>الأعمال الإدارية</Text>
+            <Text style={styles.subtitle}>متابعة الأعمال الإدارية و تاريخها</Text>
+          </View>
+        </View>
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color="#b8975a" />
-        ) : (
+        ) : tasks.length === 0 ? (
           <View style={styles.panel}>
-            {tasks.length === 0 ? (
-              <Text style={styles.empty}>لا توجد مهام حتى الآن</Text>
-            ) : (
-              tasks.map((task) => (
+            <Text style={styles.empty}>لا توجد أعمال حتى الآن</Text>
+          </View>
+        ) : (
+          <View style={taskCardStyles.list}>
+            {tasks.map((task) => {
+              const formattedDate = formatDueDate(task.due_date);
+              return (
                 <TouchableOpacity
                   key={task.id}
-                  style={styles.row}
+                  style={taskCardStyles.card}
                   onPress={() => openEditModal(task)}
+                  activeOpacity={0.7}
                 >
-                  
-                  <View style={styles.rowCopy}>
-                    <Text
-                    >
-                      {task.title}
-                    </Text>
+                  <View style={taskCardStyles.cardTop}>
+                    <Text style={taskCardStyles.title}>{task.title}</Text>
                   </View>
-                  <Feather name="chevron-left" size={16} color="#9ca3af" />
+
+                  <View style={taskCardStyles.cardBottom}>
+                    <Feather name="chevron-left" size={16} color="#94a3b8" />
+                    {formattedDate ? (
+                      <View style={taskCardStyles.dueDateBadge}>
+                        <Text style={taskCardStyles.dueDateText}>
+                          {formattedDate}
+                        </Text>
+                        <Feather name="calendar" size={12} color="#b89355" />
+                      </View>
+                    ) : (
+                      <View style={taskCardStyles.noDueDateBadge}>
+                        <Text style={taskCardStyles.noDueDateText}>
+                          بدون تاريخ استحقاق
+                        </Text>
+                        <Feather name="clock" size={11} color="#94a3b8" />
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
-              ))
-            )}
+              );
+            })}
           </View>
         )}
         <Modal
@@ -272,11 +311,12 @@ export default function Tasks() {
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
+                  
                   <Text style={styles.modalTitle}>
-                    {editingTask ? "تعديل المهمة" : "مهمة جديدة"}
+                    {editingTask ? "تعديل العمل" : "عمل جديد"}
                   </Text>
 
-                  <Text style={styles.label}>عنوان المهمة</Text>
+                  <Text style={styles.label}>عنوان العمل</Text>
                   <TextInput
                     value={form.title}
                     onChangeText={(title) =>
@@ -294,12 +334,12 @@ export default function Tasks() {
                       setForm((current) => ({ ...current, description }))
                     }
                     multiline
-                    placeholder="اكتب تفاصيل المهمة"
+                    placeholder="اكتب تفاصيل العمل"
                     placeholderTextColor="#526071"
                     style={[styles.compactInput, styles.textArea]}
                   />
 
-                  <Text style={styles.label}>موعد التسليم</Text>
+                  <Text style={styles.label}>التاريخ</Text>
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => setShowDueDatePicker(true)}
@@ -311,7 +351,7 @@ export default function Tasks() {
                         !form.due_date && styles.dateInputPlaceholder,
                       ]}
                     >
-                      {form.due_date || "اختر تاريخ التسليم"}
+                      {form.due_date || "اختر التاريخ "}
                     </Text>
                     <Feather name="calendar" size={16} color="#526071" />
                   </TouchableOpacity>
@@ -379,7 +419,7 @@ export default function Tasks() {
                     onPress={saveTask}
                   >
                     <Text style={styles.actionText}>
-                      {editingTask ? "حفظ التعديلات" : "إضافة المهمة"}
+                      {editingTask ? "حفظ التعديلات" : "إضافة العمل"}
                     </Text>
                   </TouchableOpacity>
                   {editingTask ? (
@@ -387,7 +427,7 @@ export default function Tasks() {
                       style={styles.deleteAction}
                       onPress={deleteCurrentTask}
                     >
-                      <Text style={styles.deleteActionText}>حذف المهمة</Text>
+                      <Text style={styles.deleteActionText}>حذف العمل</Text>
                     </TouchableOpacity>
                   ) : null}
 
@@ -466,3 +506,71 @@ export default function Tasks() {
     </SafeAreaView>
   );
 }
+
+const taskCardStyles = StyleSheet.create({
+  list: {
+    gap: 10,
+    marginTop: 18,
+  },
+  card: {
+    backgroundColor: "#ffffff",
+    borderColor: "#e7e9ee",
+    borderRadius: 14,
+    borderWidth: 1,
+    elevation: 2,
+    gap: 10,
+    padding: 16,
+    shadowColor: "#0d1b2a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
+  cardTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  title: {
+    color: "#0e2038",
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 22,
+    textAlign: "right",
+  },
+  cardBottom: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  dueDateBadge: {
+    alignItems: "center",
+    backgroundColor: "#fdf8ee",
+    borderColor: "#faeed4",
+    borderRadius: 6,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  dueDateText: {
+    color: "#b89355",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  noDueDateBadge: {
+    alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 6,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  noDueDateText: {
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});

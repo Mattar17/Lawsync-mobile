@@ -1,25 +1,25 @@
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  cancelInvite,
-  createInvite,
-  getMyInvites,
-  getOfficeInvites,
-  respondToInvite,
-  type Invite,
+    cancelInvite,
+    createInvite,
+    getMyInvites,
+    getOfficeInvites,
+    respondToInvite,
+    type Invite,
 } from "../api/invites";
 import { getActiveOffice, getOffice } from "../api/office";
 import { styles } from "./styles";
-import WorkspaceHeader from "./WorkspaceHeader";
 
 export default function Invites() {
   const [officeId, setOfficeId] = useState("");
@@ -138,7 +138,17 @@ export default function Invites() {
   };
   return (
     <SafeAreaView style={styles.root}>
-      <WorkspaceHeader title="الدعوات" />
+      <View style={styles.backRow}>
+        <TouchableOpacity
+          onPress={() => router.replace("/Dashboard" as never)}
+          style={styles.backButton}
+          activeOpacity={0.7}
+          accessibilityLabel="الرجوع إلى لوحة التحكم"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="arrow-left" size={24} color="#b89355" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.content}>
         {/* Incoming Invites Section */}
         {incomingInvites.length > 0 && (

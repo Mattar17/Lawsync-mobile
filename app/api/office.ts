@@ -23,8 +23,14 @@ export type Member = {
   role: "owner" | "member";
 };
 
+export type OfficeResponse = {
+  office:Office;
+  success:boolean
+}
+
 export const getActiveOffice = async () => {
   const offices = await getMyOffices();
+  console.log("Getting Acive Office",offices[0])
   return offices[0] ?? null;
 };
 export const getMyOffices = async() : Promise<Office[]> => {
@@ -34,7 +40,8 @@ export const getMyOffices = async() : Promise<Office[]> => {
 };
 
 export const getOffice = (officeId: string) =>
-  request<Office>(`/api/offices/${officeId}`);
+  request<OfficeResponse>(`/api/offices/${officeId}`);
+
 export const updateOffice = (officeId: string, body: object) =>
   request<Office>(`/api/offices/${officeId}`, {
     method: "PUT",
