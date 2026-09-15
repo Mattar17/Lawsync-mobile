@@ -3,21 +3,21 @@ import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { getOfficeCases } from "./api/cases";
 import { getOfficeTasks, Task } from "./api/tasks";
 import DashboardCalendar, {
-    formatDueDate,
-    isSameDay
+  formatDueDate,
+  isSameDay
 } from "./components/DashboardCalendar";
 import { CaseT } from "./types";
 import { useUserStore } from "./zustandStore/userStore";
