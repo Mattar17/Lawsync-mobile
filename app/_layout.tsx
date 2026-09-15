@@ -12,6 +12,10 @@ export default function RootLayout() {
         options={{ title: "تفاصيل القضية", headerShown: false }}
       ></Stack.Screen>
       <Stack.Screen
+        name="ClientDetails"
+        options={{ title: "تفاصيل الموكل", headerShown: false }}
+      ></Stack.Screen>
+      <Stack.Screen
         name="Login"
         options={{ title: "تسجيل الدخول", headerShown: false }}
       ></Stack.Screen>
@@ -46,6 +50,10 @@ export default function RootLayout() {
       <Stack.Screen
         name="workspace/Cases"
         options={{ title: "القضايا", headerShown: false }}
+      />
+      <Stack.Screen
+        name="workspace/Clients"
+        options={{ title: "العملاء", headerShown: false }}
       />
       <Stack.Screen
         name="workspace/Tasks"

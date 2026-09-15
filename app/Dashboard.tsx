@@ -3,19 +3,21 @@ import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { getOfficeCases } from "./api/cases";
 import { getOfficeTasks, Task } from "./api/tasks";
 import DashboardCalendar, {
-  formatDueDate,
-  isSameDay
+    formatDueDate,
+    isSameDay
 } from "./components/DashboardCalendar";
 import { CaseT } from "./types";
 import { useUserStore } from "./zustandStore/userStore";
@@ -28,6 +30,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(() => new Date());
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -112,35 +115,69 @@ export default function Dashboard() {
                   />
                 </TouchableOpacity>
 
-                {isQuickMenuOpen && (
-                  <View style={styles.quickMenuList}>
-                    <TouchableOpacity
-                      style={styles.menuLink}
-                      onPress={() => router.push("/workspace/Cases" as never)}
+                <Modal
+                  transparent
+                  visible={isQuickMenuOpen}
+                  onRequestClose={() => setIsQuickMenuOpen(false)}
+                  animationType="fade"
+                >
+                  <Pressable
+                    style={styles.modalBackdrop}
+                    onPress={() => setIsQuickMenuOpen(false)}
+                  >
+                    <Pressable
+                      style={[
+                        styles.quickMenuList,
+                        { top: insets.top + 50, right: 20 },
+                      ]}
+                      onPress={(e) => e.stopPropagation()}
                     >
-                      <Feather name="briefcase" size={17} color="#b89355" />
-                      <Text style={styles.menuLinkText}>القضايا</Text>
-                    </TouchableOpacity>
-                    <View style={styles.menuDivider} />
-                    <TouchableOpacity
-                      style={styles.menuLink}
-                      onPress={() => router.push("/workspace/Tasks" as never)}
-                    >
-                      <Feather name="check-square" size={17} color="#b89355" />
-                      <Text style={styles.menuLinkText}>الأعمال الإدارية</Text>
-                    </TouchableOpacity>
-                    <View style={styles.menuDivider} />
-                    <TouchableOpacity
-                      style={styles.menuLink}
-                      onPress={() =>
-                        router.push("/workspace/OfficeSettings" as never)
-                      }
-                    >
-                      <Feather name="sliders" size={17} color="#b89355" />
-                      <Text style={styles.menuLinkText}>الإعدادات</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                      <TouchableOpacity
+                        style={styles.menuLink}
+                        onPress={() => {
+                          setIsQuickMenuOpen(false);
+                          router.push("/workspace/Cases" as never);
+                        }}
+                      >
+                        <Feather name="briefcase" size={17} color="#b89355" />
+                        <Text style={styles.menuLinkText}>القضايا</Text>
+                      </TouchableOpacity>
+                      <View style={styles.menuDivider} />
+                      <TouchableOpacity
+                        style={styles.menuLink}
+                        onPress={() => {
+                          setIsQuickMenuOpen(false);
+                          router.push("/workspace/Clients" as never);
+                        }}
+                      >
+                        <Feather name="users" size={17} color="#b89355" />
+                        <Text style={styles.menuLinkText}>العملاء</Text>
+                      </TouchableOpacity>
+                      <View style={styles.menuDivider} />
+                      <TouchableOpacity
+                        style={styles.menuLink}
+                        onPress={() => {
+                          setIsQuickMenuOpen(false);
+                          router.push("/workspace/Tasks" as never);
+                        }}
+                      >
+                        <Feather name="check-square" size={17} color="#b89355" />
+                        <Text style={styles.menuLinkText}>الأعمال الإدارية</Text>
+                      </TouchableOpacity>
+                      <View style={styles.menuDivider} />
+                      <TouchableOpacity
+                        style={styles.menuLink}
+                        onPress={() => {
+                          setIsQuickMenuOpen(false);
+                          router.push("/workspace/OfficeSettings" as never);
+                        }}
+                      >
+                        <Feather name="sliders" size={17} color="#b89355" />
+                        <Text style={styles.menuLinkText}>الإعدادات</Text>
+                      </TouchableOpacity>
+                    </Pressable>
+                  </Pressable>
+                </Modal>
               </View>
             </View>
 
@@ -788,22 +825,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 38,
   },
+  modalBackdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    flex: 1,
+  },
   quickMenuList: {
     backgroundColor: "#0d1b2a",
     borderColor: "#203a5c",
     borderRadius: 12,
     borderWidth: 1,
-    elevation: 8,
+    elevation: 20,
     padding: 6,
     position: "absolute",
-    right: 0,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    top: 46,
-    width: 155,
-    zIndex: 9999,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    width: 165,
   },
   menuLink: {
     alignItems: "center",

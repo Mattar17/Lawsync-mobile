@@ -75,7 +75,7 @@ export default function Invites() {
             missingOfficeIds.map(async (id) => {
               try {
                 const office = await getOffice(id);
-                names[id] = office.name;
+                names[id] = office.office?.name || (office as any).name || "مكتب";
               } catch (error) {
                 names[id] = "مكتب غير معروف";
                 console.log(
