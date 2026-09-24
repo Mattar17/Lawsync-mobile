@@ -36,6 +36,10 @@ export default function RootLayout() {
         options={{ title: "اختيار المساحة", headerShown: false }}
       />
       <Stack.Screen
+        name="Admin"
+        options={{ title: "لوحة تحكم المسؤول", headerShown: false }}
+      />
+      <Stack.Screen
         name="Dashboard"
         options={{ title: "المكتب", headerShown: false }}
       />

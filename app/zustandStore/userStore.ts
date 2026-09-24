@@ -17,14 +17,20 @@ export type User = {
   name: string;
   bio: string;
   pictureUrl: string;
-  email:string;
+  email: string;
+  isAdmin?: boolean;
+  isVerified?: boolean;
 };
 
 type UserStore = {
   user: User | null;
   Office: Office | null;
+  isVerified: boolean;
+  hasPendingVerification: boolean;
   setUser: (user: User | null) => void;
   setCurrentOffice: (office: Office) => void;
+  setIsVerified: (isVerified: boolean) => void;
+  setHasPendingVerification: (hasPending: boolean) => void;
   clearUser: () => void;
 };
 
@@ -33,9 +39,34 @@ export const useUserStore = create<UserStore>()(
     (set) => ({
       user: null,
       Office: null,
-      setUser: (user) => set({ user }),
+      isVerified: false,
+      hasPendingVerification: false,
+      setUser: (user) =>
+        set((state) => ({
+          user,
+          isVerified: Boolean(user?.isVerified),
+          hasPendingVerification: user?.isVerified
+            ? false
+            : state.hasPendingVerification,
+        })),
       setCurrentOffice: (office) => set({ Office: office }),
-      clearUser: () => set({ user: null, Office: null }),
+      setIsVerified: (isVerified) =>
+        set((state) => ({
+          isVerified,
+          hasPendingVerification: isVerified
+            ? false
+            : state.hasPendingVerification,
+          user: state.user ? { ...state.user, isVerified } : null,
+        })),
+      setHasPendingVerification: (hasPendingVerification) =>
+        set({ hasPendingVerification }),
+      clearUser: () =>
+        set({
+          user: null,
+          Office: null,
+          isVerified: false,
+          hasPendingVerification: false,
+        }),
     }),
     {
       name: "lawsync-user-store",

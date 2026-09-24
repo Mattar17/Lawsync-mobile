@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Lawsync-mobile",
-    "slug": "Lawsync-mobile",
+    "name": "Meezan",
+    "slug": "Meezan",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app-logo.jpg",
     "scheme": "lawsyncmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -18,7 +18,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.Lawsyncmobile"
+      "package": "com.anonymous.Lawsyncmobile",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -47,6 +50,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "38bff67c-7367-4341-9a31-36060cf04084"
+      }
     }
   }
 }

@@ -29,3 +29,33 @@ export const updateLawyerAvatar = (lawyerId: string, formData: FormData) =>
   uploadRequest(`/api/lawyers/avatar/${lawyerId}`, formData);
 export const deleteLawyer = (lawyerId: string) =>
   request<void>(`/api/lawyers/${lawyerId}`, { method: "DELETE" });
+
+export type VerificationResponse = {
+  success: boolean;
+  message: string;
+};
+
+export const sendVerificationRequest = (
+  data: FormData | { uri: string; name?: string; type?: string },
+) => {
+  let formData: FormData;
+  if (data instanceof FormData) {
+    formData = data;
+  } else {
+    formData = new FormData();
+    formData.append("file", {
+      uri: data.uri,
+      name: data.name || "lawyer_card.jpg",
+      type: data.type || "image/jpeg",
+    } as unknown as Blob);
+  }
+  return uploadRequest<VerificationResponse>(
+    "/api/lawyers/verification_request",
+    formData,
+  );
+};
+
+export const getVerificationStatus = () =>
+  request<{ hasPendingRequest: boolean }>("/api/lawyers/verification_status");
+
+

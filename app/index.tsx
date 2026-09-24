@@ -46,6 +46,8 @@ export default function Index() {
                     (profile as any).picture_url ||
                     (profile as any).pictureUrl ||
                     "",
+                  isAdmin: (profile as any).is_admin ?? (profile as any).isAdmin,
+                  isVerified: (profile as any).is_verified ?? (profile as any).isVerified,
                 });
               }
             }
