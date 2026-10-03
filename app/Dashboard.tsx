@@ -4,20 +4,18 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { getOfficeCases } from "./api/cases";
 import { getOfficeTasks, Task } from "./api/tasks";
 import DashboardCalendar, {
   formatDueDate,
-  isSameDay
+  isSameDay,
 } from "./components/DashboardCalendar";
 import { CaseT } from "./types";
 import { useUserStore } from "./zustandStore/userStore";
@@ -28,9 +26,9 @@ export default function Dashboard() {
   const [cases, setCases] = useState<CaseT[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(() => new Date());
-  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
-  const insets = useSafeAreaInsets();
+  const [selectedDate, setSelectedDate] = useState<Date | null>(
+    () => new Date(),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -81,6 +79,41 @@ export default function Dashboard() {
 
   const hasItems = filteredTasks.length > 0 || filteredCases.length > 0;
 
+  const quickLinks = [
+    {
+      id: "cases",
+      title: "القضايا",
+      subtitle: `${cases.length} قضايا`,
+      icon: "briefcase" as const,
+      color: "#8B5CF6",
+      route: "/workspace/Cases",
+    },
+    {
+      id: "clients",
+      title: "العملاء",
+      subtitle: "دليل العملاء",
+      icon: "users" as const,
+      color: "#FB7185",
+      route: "/workspace/Clients",
+    },
+    {
+      id: "tasks",
+      title: "الأعمال",
+      subtitle: `${tasks.length} مهام`,
+      icon: "check-square" as const,
+      color: "#F59E0B",
+      route: "/workspace/Tasks",
+    },
+    {
+      id: "settings",
+      title: "الإعدادات",
+      subtitle: "المكتب",
+      icon: "sliders" as const,
+      color: "#38BDF8",
+      route: "/workspace/OfficeSettings",
+    },
+  ];
+
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -99,86 +132,6 @@ export default function Dashboard() {
                 <Feather name="home" size={18} color="#b89355" />
                 <Text style={styles.officeSwitcherText}>الرئيسية</Text>
               </TouchableOpacity>
-
-              <View style={styles.quickMenu}>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={() => setIsQuickMenuOpen((isOpen) => !isOpen)}
-                  accessibilityLabel="الروابط السريعة"
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: isQuickMenuOpen }}
-                >
-                  <Feather
-                    name={isQuickMenuOpen ? "x" : "menu"}
-                    size={20}
-                    color="#ffffff"
-                  />
-                </TouchableOpacity>
-
-                <Modal
-                  transparent
-                  visible={isQuickMenuOpen}
-                  onRequestClose={() => setIsQuickMenuOpen(false)}
-                  animationType="fade"
-                >
-                  <Pressable
-                    style={styles.modalBackdrop}
-                    onPress={() => setIsQuickMenuOpen(false)}
-                  >
-                    <Pressable
-                      style={[
-                        styles.quickMenuList,
-                        { top: insets.top + 50, right: 20 },
-                      ]}
-                      onPress={(e) => e.stopPropagation()}
-                    >
-                      <TouchableOpacity
-                        style={styles.menuLink}
-                        onPress={() => {
-                          setIsQuickMenuOpen(false);
-                          router.push("/workspace/Cases" as never);
-                        }}
-                      >
-                        <Feather name="briefcase" size={17} color="#b89355" />
-                        <Text style={styles.menuLinkText}>القضايا</Text>
-                      </TouchableOpacity>
-                      <View style={styles.menuDivider} />
-                      <TouchableOpacity
-                        style={styles.menuLink}
-                        onPress={() => {
-                          setIsQuickMenuOpen(false);
-                          router.push("/workspace/Clients" as never);
-                        }}
-                      >
-                        <Feather name="users" size={17} color="#b89355" />
-                        <Text style={styles.menuLinkText}>العملاء</Text>
-                      </TouchableOpacity>
-                      <View style={styles.menuDivider} />
-                      <TouchableOpacity
-                        style={styles.menuLink}
-                        onPress={() => {
-                          setIsQuickMenuOpen(false);
-                          router.push("/workspace/Tasks" as never);
-                        }}
-                      >
-                        <Feather name="check-square" size={17} color="#b89355" />
-                        <Text style={styles.menuLinkText}>الأعمال الإدارية</Text>
-                      </TouchableOpacity>
-                      <View style={styles.menuDivider} />
-                      <TouchableOpacity
-                        style={styles.menuLink}
-                        onPress={() => {
-                          setIsQuickMenuOpen(false);
-                          router.push("/workspace/OfficeSettings" as never);
-                        }}
-                      >
-                        <Feather name="sliders" size={17} color="#b89355" />
-                        <Text style={styles.menuLinkText}>الإعدادات</Text>
-                      </TouchableOpacity>
-                    </Pressable>
-                  </Pressable>
-                </Modal>
-              </View>
             </View>
 
             <Text style={styles.office}>● {currentOffice.name}</Text>
@@ -189,6 +142,31 @@ export default function Dashboard() {
 
         {/* Overlapping Main Content */}
         <View style={styles.mainContainer}>
+          {/* Quick Links Cards in One Row (above calendar) */}
+          <View style={styles.quickCardsRow}>
+            {quickLinks.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.quickCard}
+                onPress={() => router.push(item.route as never)}
+                activeOpacity={0.8}
+              >
+                
+                <View style={styles.quickCardCenter}>
+                  <Feather name={item.icon} size={20} color="#ffffff" />
+                </View>
+                <View style={styles.quickCardBottom}>
+                  <Text style={styles.quickCardTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.quickCardSubtitle} numberOfLines={1}>
+                    {item.subtitle}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <DashboardCalendar
             tasks={tasks}
             cases={cases}
@@ -451,7 +429,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 48,
+    paddingBottom: 24,
   },
   topNav: {
     alignItems: "center",
@@ -492,7 +470,7 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     paddingHorizontal: 16,
-    marginTop: -28,
+    marginTop: 16,
   },
   panel: {
     backgroundColor: "#ffffff",
@@ -810,57 +788,56 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
-  quickMenu: {
-    alignItems: "flex-end",
-    position: "relative",
-    zIndex: 2,
+  quickCardsRow: {
+    flexDirection: "row-reverse",
+    gap: 8,
+    marginBottom: 16,
   },
-  menuButton: {
-    alignItems: "center",
-    backgroundColor: "#162840",
-    borderColor: "#203a5c",
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 38,
-    justifyContent: "center",
-    width: 38,
-  },
-  modalBackdrop: {
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
+  quickCard: {
     flex: 1,
-  },
-  quickMenuList: {
-    backgroundColor: "#0d1b2a",
-    borderColor: "#203a5c",
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderColor: "#e6ecf5",
     borderWidth: 1,
-    elevation: 20,
-    padding: 6,
-    position: "absolute",
-    shadowColor: "#000",
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    height: 110,
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#0d1b2a",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    width: 165,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  menuLink: {
+  quickCardTop: {
+    width: "100%",
+    alignItems: "flex-end",
+    paddingRight: 6,
+  },
+  quickCardCenter: {
     alignItems: "center",
-    borderRadius: 8,
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    justifyContent: "center",
+    height: 38,
+    width: 38,
+    borderRadius: 19,
+    backgroundColor: "#0d1b2a",
   },
-  menuDivider: {
-    backgroundColor: "#1d2e45",
-    height: 1,
-    marginHorizontal: 8,
+  quickCardBottom: {
+    width: "100%",
+    alignItems: "center",
   },
-  menuLinkText: {
-    color: "#f8fafc",
-    flex: 1,
-    fontSize: 13,
+  quickCardTitle: {
+    color: "#0d1b2a",
+    fontSize: 12.5,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  quickCardSubtitle: {
+    color: "#64748b",
+    fontSize: 10,
     fontWeight: "600",
-    textAlign: "right",
+    marginTop: 2,
+    textAlign: "center",
   },
 });

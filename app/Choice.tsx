@@ -4,46 +4,60 @@ import { router } from "expo-router";
 import { navigate } from "expo-router/build/global-state/routing";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getVerificationStatus, sendVerificationRequest } from "./api/lawyer";
+import {
+  getSubscriptionStatus,
+  getVerificationStatus,
+  sendSubscriptionRequest,
+  sendVerificationRequest,
+} from "./api/lawyer";
 import { createOffice, getMyOffices, type Office } from "./api/office";
 import { Logout } from "./utils/Logout";
 import { useUserStore } from "./zustandStore/userStore";
 
 const choices = [
   {
+    id: "office",
     title: "المكتب",
     description: "تابع قضايا مكتبك ومهامك اليومية",
     icon: "briefcase" as const,
-    color: "#b8975a",
+    color: "#0d1b2a",
+    iconColor: "#b89355",
+    requiresSubscription: false,
   },
   {
-    title: "المكتبة القانونية",
-    description: "تصفح الأقسام والكتب القانونية",
+    id: "library",
+    title: "المكتبة القضائية",
+    description: "تصفح الأقسام والكتب القضائية والقانونية",
     icon: "book-open" as const,
-    color: "#3b6fa0",
-    onPress: () => router.push("/Books" as never),
+    color: "#0d1b2a",
+    iconColor: "#ffffff",
+    route: "/Books",
+    requiresSubscription: true,
   },
   {
+    id: "documents",
     title: "إنشاء المستندات",
     description: "أنشئ مستنداتك القانونية بسهولة",
     icon: "file-text" as const,
-    color: "#7c5cbf",
-    onPress: () => router.push("/Documents" as never),
+    color: "#0d1b2a",
+    iconColor: "#ffffff",
+    route: "/Documents",
+    requiresSubscription: true,
   },
 ];
 
@@ -63,15 +77,36 @@ export default function Choice() {
   const setHasPendingVerification = useUserStore(
     (state) => state.setHasPendingVerification,
   );
+
+  // Subscription state from Userstore
+  const isSubscribed = useUserStore((state) => state.isSubscribed);
+  const subscriptionEndDate = useUserStore((state) => state.subscriptionEndDate);
+  const hasPendingSubscription = useUserStore(
+    (state) => state.hasPendingSubscription,
+  );
+  const setIsSubscribed = useUserStore((state) => state.setIsSubscribed);
+  const setHasPendingSubscription = useUserStore(
+    (state) => state.setHasPendingSubscription,
+  );
+
   const clearUser = useUserStore((state) => state.clearUser);
   const setCurrentOffice = useUserStore((state) => state.setCurrentOffice);
   const currentOffice = useUserStore((state) => state.Office);
 
+  // Verification modal state
   const [verificationModalVisible, setVerificationModalVisible] =
     useState(false);
   const [selectedImage, setSelectedImage] =
     useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSubmittingVerification, setIsSubmittingVerification] =
+    useState(false);
+
+  // Subscription modal state
+  const [subscriptionModalVisible, setSubscriptionModalVisible] =
+    useState(false);
+  const [selectedInvoice, setSelectedInvoice] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [isSubmittingSubscription, setIsSubmittingSubscription] =
     useState(false);
 
   const handlePickVerificationImage = async () => {
@@ -148,9 +183,133 @@ export default function Choice() {
     }
   };
 
+  const handlePickInvoiceImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "تنبيه",
+        "يرجى السماح للتطبيق بالوصول للصور من إعدادات الجهاز لاختيار صورة إيصال الدفع",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.85,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      Alert.alert("تنبيه", "حجم الصورة يجب ألا يتجاوز 5 ميجابايت");
+      return;
+    }
+
+    setSelectedInvoice(asset);
+  };
+
+  const handleSubmitSubscription = async () => {
+    if (!selectedInvoice) {
+      Alert.alert("تنبيه", "يرجى اختيار صورة إيصال الدفع أو الفاتورة أولاً");
+      return;
+    }
+
+    setIsSubmittingSubscription(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: selectedInvoice.uri,
+        name: selectedInvoice.fileName || "subscription_invoice.jpg",
+        type: selectedInvoice.mimeType || "image/jpeg",
+      } as unknown as Blob);
+
+      const res = await sendSubscriptionRequest(formData);
+      setHasPendingSubscription(true);
+      Alert.alert(
+        "تم بنجاح",
+        res?.message || "تم إرسال طلب الاشتراك وبانتظار موافقة المسؤول",
+        [
+          {
+            text: "حسناً",
+            onPress: () => {
+              setSubscriptionModalVisible(false);
+              setSelectedInvoice(null);
+            },
+          },
+        ],
+      );
+    } catch (err: any) {
+      if (
+        err?.message &&
+        (err.message.includes("معلق") || err.message.includes("بالفعل"))
+      ) {
+        setHasPendingSubscription(true);
+        setSubscriptionModalVisible(false);
+      }
+      Alert.alert(
+        "تنبيه",
+        err.message || "حدث خطأ أثناء إرسال طلب الاشتراك",
+      );
+    } finally {
+      setIsSubmittingSubscription(false);
+    }
+  };
+
+  const formatSubEndDate = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("ar-EG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const handleChoicePress = (choice: (typeof choices)[number]) => {
+    if (choice.requiresSubscription && !isSubscribed) {
+      Alert.alert(
+        "ميزة خاصة بالمشتركين",
+        `قسم "${choice.title}" متاح فقط للمشتركين. يرجى إرسال طلب اشتراك لتفعيل الوصول إلى هذا القسم.`,
+        [
+          { text: "إلغاء", style: "cancel" },
+          {
+            text: "إرسال طلب اشتراك",
+            onPress: () => {
+              if (hasPendingSubscription) {
+                Alert.alert(
+                  "تنبيه",
+                  "لديك طلب اشتراك قيد المراجعة بالفعل من قبل المسؤول.",
+                );
+              } else {
+                setSubscriptionModalVisible(true);
+              }
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    if (choice.id === "office") {
+      if (currentOffice) {
+        navigate("/Dashboard");
+      } else {
+        setCreateOfficeModalVisible(true);
+      }
+    } else if (choice.route) {
+      router.push(choice.route as never);
+    }
+  };
+
   useEffect(() => {
     async function checkVerification() {
-      if (user && !isVerified) {
+      if (user?.id && !isVerified) {
         try {
           const res = await getVerificationStatus();
           if (res?.hasPendingRequest !== undefined) {
@@ -162,7 +321,29 @@ export default function Choice() {
       }
     }
     checkVerification();
-  }, [user, isVerified]);
+  }, [user?.id, isVerified]);
+
+  useEffect(() => {
+    async function checkSubscription() {
+      if (user?.id) {
+        try {
+          const res = await getSubscriptionStatus();
+          if (res) {
+            setIsSubscribed(
+              Boolean(res.isSubscribed),
+              res.subscription?.current_period_end ?? null,
+            );
+            if (res.hasPendingRequest !== undefined) {
+              setHasPendingSubscription(Boolean(res.hasPendingRequest));
+            }
+          }
+        } catch {
+          // ignore network errors, fallback to store state
+        }
+      }
+    }
+    checkSubscription();
+  }, [user?.id]);
 
 
   const loadOffice = (office: Office) => {
@@ -491,6 +672,125 @@ export default function Choice() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Subscription Request Modal */}
+      <Modal
+        visible={subscriptionModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isSubmittingSubscription) {
+            setSubscriptionModalVisible(false);
+          }
+        }}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => {
+              if (!isSubmittingSubscription) {
+                setSubscriptionModalVisible(false);
+              }
+            }}
+          >
+            <Pressable
+              style={styles.verificationModalCard}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.verificationModalHeader}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!isSubmittingSubscription) {
+                      setSubscriptionModalVisible(false);
+                    }
+                  }}
+                  style={styles.closeModalBtn}
+                >
+                  <Feather name="x" size={20} color="#6b7280" />
+                </TouchableOpacity>
+                <Text style={styles.verificationModalTitle}>
+                  طلب تفعيل الاشتراك
+                </Text>
+              </View>
+
+              <Text style={styles.verificationModalDesc}>
+                يرجى إرفاق صورة واضحة لإيصال أو فاتورة سداد الاشتراك لتأكيد الدفع
+                وتفعيل كافة الميزات كالمكتبة القضائية وإنشاء المستندات.
+              </Text>
+
+              {selectedInvoice ? (
+                <View style={styles.previewContainer}>
+                  <Image
+                    source={{ uri: selectedInvoice.uri }}
+                    style={styles.cardPreviewImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.previewDetailsRow}>
+                    <Text style={styles.previewFileName} numberOfLines={1}>
+                      {selectedInvoice.fileName || "subscription_invoice.jpg"}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.repickBtn}
+                      onPress={handlePickInvoiceImage}
+                      disabled={isSubmittingSubscription}
+                    >
+                      <Feather name="refresh-cw" size={13} color="#b8975a" />
+                      <Text style={styles.repickBtnText}>تغيير الصورة</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.uploadPlaceholder}
+                  onPress={handlePickInvoiceImage}
+                  activeOpacity={0.7}
+                  disabled={isSubmittingSubscription}
+                >
+                  <View style={styles.uploadIconCircle}>
+                    <Feather name="credit-card" size={24} color="#b8975a" />
+                  </View>
+                  <Text style={styles.uploadMainText}>
+                    اضغط لاختيار صورة إيصال الدفع
+                  </Text>
+                  <Text style={styles.uploadSubText}>
+                    صيغ مدعومة: JPG، PNG (الحد الأقصى 5 ميجابايت)
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.modalFooterButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.submitVerificationBtn,
+                    (!selectedInvoice || isSubmittingSubscription) &&
+                      styles.submitVerificationBtnDisabled,
+                  ]}
+                  onPress={handleSubmitSubscription}
+                  disabled={!selectedInvoice || isSubmittingSubscription}
+                >
+                  {isSubmittingSubscription ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.submitVerificationBtnText}>
+                      إرسال طلب الاشتراك
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelVerificationBtn}
+                  onPress={() => setSubscriptionModalVisible(false)}
+                  disabled={isSubmittingSubscription}
+                >
+                  <Text style={styles.cancelVerificationBtnText}>إلغاء</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -511,9 +811,9 @@ export default function Choice() {
                 ]}
               >
                 <Feather
-                  name={hasPendingVerification ? "clock" : "alert-circle"}
-                  size={20}
-                  color={hasPendingVerification ? "#2563eb" : "#b45309"}
+                  name={hasPendingVerification ? "clock" : "shield"}
+                  size={18}
+                  color={hasPendingVerification ? "#0d1b2a" : "#b89355"}
                 />
               </View>
               <View style={styles.bannerTextCol}>
@@ -555,7 +855,7 @@ export default function Choice() {
               <Feather
                 name={hasPendingVerification ? "clock" : "shield"}
                 size={14}
-                color={hasPendingVerification ? "#64748b" : "#fff"}
+                color={hasPendingVerification ? "#64748b" : "#b89355"}
               />
               <Text
                 style={[
@@ -569,35 +869,147 @@ export default function Choice() {
           </View>
         )}
 
+        {/* Subscription Message at the top of Choice.tsx */}
+        {user && !isSubscribed && (
+          <View
+            style={[
+              styles.subscriptionBanner,
+              hasPendingSubscription && styles.pendingSubBanner,
+            ]}
+          >
+            <View style={styles.bannerContentRow}>
+              <View
+                style={[
+                  styles.subscriptionIconBox,
+                  hasPendingSubscription && styles.pendingSubIconBox,
+                ]}
+              >
+                <Feather
+                  name={hasPendingSubscription ? "clock" : "credit-card"}
+                  size={18}
+                  color={hasPendingSubscription ? "#0d1b2a" : "#b89355"}
+                />
+              </View>
+              <View style={styles.bannerTextCol}>
+                <Text
+                  style={[
+                    styles.subBannerTitle,
+                    hasPendingSubscription && styles.pendingSubBannerTitle,
+                  ]}
+                >
+                  {hasPendingSubscription
+                    ? "طلب الاشتراك قيد المراجعة"
+                    : "حسابك غير مشترك"}
+                </Text>
+                <Text
+                  style={[
+                    styles.subBannerText,
+                    hasPendingSubscription && styles.pendingSubBannerText,
+                  ]}
+                >
+                  {hasPendingSubscription
+                    ? "تم إرسال إيصال السداد وبإنتظار موافقة المسؤول لتفعيل اشتراكك."
+                    : "لم يتم تفعيل الاشتراك بعد. أرسل إيصال الدفع للوصول إلى المكتبة القضائية وإنشاء المستندات."}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.subActionBtn,
+                hasPendingSubscription && styles.subActionBtnDisabled,
+              ]}
+              onPress={() => {
+                if (!hasPendingSubscription) {
+                  setSubscriptionModalVisible(true);
+                }
+              }}
+              disabled={hasPendingSubscription}
+              activeOpacity={hasPendingSubscription ? 1 : 0.8}
+            >
+              <Feather
+                name={hasPendingSubscription ? "clock" : "upload"}
+                size={14}
+                color={hasPendingSubscription ? "#64748b" : "#b89355"}
+              />
+              <Text
+                style={[
+                  styles.subActionBtnText,
+                  hasPendingSubscription && styles.subActionBtnTextDisabled,
+                ]}
+              >
+                {hasPendingSubscription ? "قيد المراجعة" : "إرسال طلب اشتراك"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Active Subscription Banner */}
+        {user && isSubscribed && (
+          <View style={styles.activeSubBanner}>
+            <View style={styles.activeSubContentRow}>
+              <View style={styles.activeSubIconBox}>
+                <Feather name="check-circle" size={20} color="#16a34a" />
+              </View>
+              <View style={styles.bannerTextCol}>
+                <Text style={styles.activeSubTitle}>الاشتراك مفعل</Text>
+                <Text style={styles.activeSubText}>
+                  {subscriptionEndDate
+                    ? `الاشتراك سارٍ حتى: ${formatSubEndDate(subscriptionEndDate)}`
+                    : "الاشتراك سارٍ"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>LAW SYNC</Text>
-          <Text style={styles.title}>مرحباً بك</Text>
-          <Text style={styles.subtitle}>اختر المساحة التي تريد الدخول إليها</Text>
+          <Text style={styles.sectionHeading}>اختر المساحة التي تريد الدخول إليها</Text>
         </View>
         <View style={styles.cards}>
-          {choices.map((choice) => (
-            <TouchableOpacity
-              key={choice.title}
-              activeOpacity={0.85}
-              style={styles.card}
-              onPress={
-                choice.title === "المكتب"
-                  ? currentOffice
-                    ? () => navigate("/Dashboard")
-                    : () => setCreateOfficeModalVisible(true)
-                  : choice.onPress
-              }
-            >
-              <View style={[styles.icon, { backgroundColor: choice.color }]}>
-                <Feather name={choice.icon} size={25} color="#fff" />
-              </View>
-              <View style={styles.cardCopy}>
-                <Text style={styles.cardTitle}>{choice.title}</Text>
-                <Text style={styles.cardDescription}>{choice.description}</Text>
-              </View>
-              <Feather name="arrow-left" size={20} color="#9ca3af" />
-            </TouchableOpacity>
-          ))}
+          {choices.map((choice) => {
+            const isLocked = choice.requiresSubscription && !isSubscribed;
+            return (
+              <TouchableOpacity
+                key={choice.title}
+                activeOpacity={0.85}
+                style={[styles.card, isLocked && styles.lockedCard]}
+                onPress={() => handleChoicePress(choice)}
+              >
+                <View
+                  style={[
+                    styles.icon,
+                    { backgroundColor: choice.color },
+                    isLocked && styles.lockedIcon,
+                  ]}
+                >
+                  <Feather
+                    name={choice.icon}
+                    size={24}
+                    color={choice.iconColor || "#ffffff"}
+                  />
+                </View>
+                <View style={styles.cardCopy}>
+                  <View style={styles.cardTitleRow}>
+                    <Text style={styles.cardTitle}>{choice.title}</Text>
+                    {isLocked && (
+                      <View style={styles.lockedBadge}>
+                        <Feather name="lock" size={11} color="#6b7280" />
+                        <Text style={styles.lockedBadgeText}>يتطلب اشتراك</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.cardDescription}>
+                    {choice.description}
+                  </Text>
+                </View>
+                <Feather
+                  name={isLocked ? "lock" : "chevron-left"}
+                  size={20}
+                  color={isLocked ? "#94a3b8" : "#b89355"}
+                />
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -605,22 +1017,29 @@ export default function Choice() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f5f6f8", paddingHorizontal: 20 },
+  root: { flex: 1, backgroundColor: "#f5f6fa", paddingHorizontal: 20 },
   topBar: {
     alignItems: "flex-start",
     paddingTop: 12,
   },
   avatarBtn: {
     alignItems: "center",
-    backgroundColor: "#dbeafe",
-    borderRadius: 18,
-    height: 36,
+    backgroundColor: "#0d1b2a",
+    borderColor: "#b89355",
+    borderWidth: 1.5,
+    borderRadius: 20,
+    height: 40,
     justifyContent: "center",
     overflow: "hidden",
-    width: 36,
+    width: 40,
+    shadowColor: "#0d1b2a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarImage: { height: "100%", width: "100%" },
-  avatarText: { color: "#1d4ed8", fontSize: 16, fontWeight: "700" },
+  avatarText: { color: "#b89355", fontSize: 16, fontWeight: "800" },
   menuBackdrop: {
     alignItems: "flex-start",
     flex: 1,
@@ -629,7 +1048,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     alignItems: "center",
-    backgroundColor: "rgba(14,32,56,0.35)",
+    backgroundColor: "rgba(13, 27, 42, 0.6)",
     flex: 1,
     justifyContent: "center",
     padding: 20,
@@ -641,7 +1060,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   pickerTitle: {
-    color: "#0e2038",
+    color: "#0d1b2a",
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 12,
@@ -650,8 +1069,8 @@ const styles = StyleSheet.create({
   emptyPicker: { color: "#7c879b", paddingVertical: 18, textAlign: "center" },
   officeOption: {
     alignItems: "center",
-    borderColor: "#e7e9ee",
-    borderRadius: 10,
+    borderColor: "#e6ecf5",
+    borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
     gap: 10,
@@ -659,7 +1078,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   officeOptionText: {
-    color: "#0e2038",
+    color: "#0d1b2a",
     flex: 1,
     fontSize: 15,
     fontWeight: "700",
@@ -667,21 +1086,21 @@ const styles = StyleSheet.create({
   },
   profileMenu: {
     backgroundColor: "#fff",
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
+    borderColor: "#e6ecf5",
+    borderRadius: 14,
     borderWidth: 1,
     elevation: 5,
     paddingVertical: 8,
-    shadowColor: "#111827",
+    shadowColor: "#0d1b2a",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
     width: 215,
   },
   profileName: {
-    color: "#111827",
+    color: "#0d1b2a",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
     paddingHorizontal: 14,
     paddingVertical: 8,
     textAlign: "right",
@@ -705,60 +1124,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "right",
   },
-  header: { paddingTop: 34, paddingBottom: 28 },
-  eyebrow: {
-    color: "#b8975a",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.8,
-    textAlign: "right",
-  },
-  title: {
-    color: "#0e2038",
-    fontSize: 30,
-    fontWeight: "800",
-    marginTop: 12,
-    textAlign: "right",
-  },
-  subtitle: {
-    color: "#7c879b",
-    fontSize: 15,
-    marginTop: 7,
+  header: { paddingTop: 20, paddingBottom: 16 },
+  sectionHeading: {
+    color: "#0d1b2a",
+    fontSize: 13,
+    fontWeight: "600",
     textAlign: "right",
   },
   cards: { gap: 14 },
   card: {
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderColor: "#e7e9ee",
-    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    borderColor: "#e6ecf5",
+    borderRadius: 18,
     borderWidth: 1,
     flexDirection: "row",
     padding: 18,
-    shadowColor: "#0e2038",
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
+    shadowColor: "#0d1b2a",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   icon: {
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 14,
     height: 52,
     justifyContent: "center",
     width: 52,
   },
   cardCopy: { flex: 1, paddingHorizontal: 14 },
   cardTitle: {
-    color: "#0e2038",
-    fontSize: 18,
+    color: "#0d1b2a",
+    fontSize: 17,
     fontWeight: "800",
     textAlign: "right",
   },
   cardDescription: {
-    color: "#7c879b",
+    color: "#64748b",
     fontSize: 13,
-    marginTop: 5,
+    marginTop: 4,
     textAlign: "right",
   },
   createOfficeContainer: {
@@ -886,70 +1291,75 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   verificationBanner: {
-    backgroundColor: "#fffbeb",
-    borderColor: "#fde68a",
-    borderRadius: 14,
+    backgroundColor: "#fffdfa",
+    borderColor: "#f3e8d2",
+    borderRadius: 16,
     borderWidth: 1,
     marginTop: 14,
-    padding: 14,
+    padding: 16,
     gap: 12,
+    shadowColor: "#0d1b2a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   bannerContentRow: {
     alignItems: "flex-start",
     flexDirection: "row-reverse",
-    gap: 10,
+    gap: 12,
   },
   bannerIconBox: {
     alignItems: "center",
-    backgroundColor: "#fef3c7",
-    borderRadius: 8,
-    height: 32,
+    backgroundColor: "#0d1b2a",
+    borderRadius: 10,
+    height: 36,
     justifyContent: "center",
-    width: 32,
+    width: 36,
   },
   bannerTextCol: {
     flex: 1,
   },
   bannerTitle: {
-    color: "#92400e",
+    color: "#0d1b2a",
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
     textAlign: "right",
   },
   bannerText: {
-    color: "#b45309",
+    color: "#64748b",
     fontSize: 12.5,
     lineHeight: 18,
-    marginTop: 2,
+    marginTop: 3,
     textAlign: "right",
   },
   verificationBtn: {
     alignItems: "center",
     alignSelf: "flex-end",
-    backgroundColor: "#b45309",
-    borderRadius: 8,
+    backgroundColor: "#0d1b2a",
+    borderRadius: 10,
     flexDirection: "row-reverse",
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
   },
   verificationBtnText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 13,
     fontWeight: "700",
   },
   pendingVerificationBanner: {
-    backgroundColor: "#eff6ff",
-    borderColor: "#bfdbfe",
+    backgroundColor: "#f0f7ff",
+    borderColor: "#d0e3f7",
   },
   pendingIconBox: {
-    backgroundColor: "#dbeafe",
+    backgroundColor: "#e0f0fe",
   },
   pendingBannerTitle: {
-    color: "#1e40af",
+    color: "#0d1b2a",
   },
   pendingBannerText: {
-    color: "#1e3a8a",
+    color: "#475569",
   },
   verificationBtnDisabled: {
     backgroundColor: "#e2e8f0",
@@ -1000,7 +1410,7 @@ const styles = StyleSheet.create({
   },
   uploadIconCircle: {
     alignItems: "center",
-    backgroundColor: "#fef3c7",
+    backgroundColor: "#0d1b2a",
     borderRadius: 24,
     height: 48,
     justifyContent: "center",
@@ -1064,8 +1474,8 @@ const styles = StyleSheet.create({
   },
   submitVerificationBtn: {
     alignItems: "center",
-    backgroundColor: "#0e2038",
-    borderRadius: 10,
+    backgroundColor: "#0d1b2a",
+    borderRadius: 12,
     flex: 1,
     justifyContent: "center",
     paddingVertical: 12,
@@ -1089,6 +1499,142 @@ const styles = StyleSheet.create({
   cancelVerificationBtnText: {
     color: "#4b5563",
     fontSize: 14,
+    fontWeight: "600",
+  },
+  subscriptionBanner: {
+    backgroundColor: "#f8fafc",
+    borderColor: "#e2e8f0",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 16,
+    gap: 12,
+    shadowColor: "#0d1b2a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  subscriptionIconBox: {
+    alignItems: "center",
+    backgroundColor: "#0d1b2a",
+    borderRadius: 10,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  subBannerTitle: {
+    color: "#0d1b2a",
+    fontSize: 15,
+    fontWeight: "800",
+    textAlign: "right",
+  },
+  subBannerText: {
+    color: "#64748b",
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 3,
+    textAlign: "right",
+  },
+  subActionBtn: {
+    alignItems: "center",
+    alignSelf: "flex-end",
+    backgroundColor: "#0d1b2a",
+    borderRadius: 10,
+    flexDirection: "row-reverse",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  subActionBtnText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  pendingSubBanner: {
+    backgroundColor: "#f0f7ff",
+    borderColor: "#d0e3f7",
+  },
+  pendingSubIconBox: {
+    backgroundColor: "#e0f0fe",
+  },
+  pendingSubBannerTitle: {
+    color: "#0d1b2a",
+  },
+  pendingSubBannerText: {
+    color: "#475569",
+  },
+  subActionBtnDisabled: {
+    backgroundColor: "#e2e8f0",
+  },
+  subActionBtnTextDisabled: {
+    color: "#64748b",
+  },
+  activeSubBanner: {
+    backgroundColor: "#f0fdf4",
+    borderColor: "#bbf7d0",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 14,
+    shadowColor: "#16a34a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  activeSubContentRow: {
+    alignItems: "center",
+    flexDirection: "row-reverse",
+    gap: 10,
+  },
+  activeSubIconBox: {
+    alignItems: "center",
+    backgroundColor: "#dcfce7",
+    borderRadius: 10,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  activeSubTitle: {
+    color: "#166534",
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "right",
+  },
+  activeSubText: {
+    color: "#15803d",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 2,
+    textAlign: "right",
+  },
+  lockedCard: {
+    opacity: 0.82,
+    borderColor: "#e5e7eb",
+    backgroundColor: "#fafafa",
+  },
+  lockedIcon: {
+    opacity: 0.7,
+  },
+  cardTitleRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+  },
+  lockedBadge: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  lockedBadgeText: {
+    color: "#6b7280",
+    fontSize: 11,
     fontWeight: "600",
   },
 });

@@ -58,4 +58,43 @@ export const sendVerificationRequest = (
 export const getVerificationStatus = () =>
   request<{ hasPendingRequest: boolean }>("/api/lawyers/verification_status");
 
+export type SubscriptionStatusResponse = {
+  hasPendingRequest: boolean;
+  isSubscribed: boolean;
+  subscription: {
+    id: string;
+    lawyer_id: string;
+    status: string;
+    current_period_start: string;
+    current_period_end: string;
+    gateway?: string;
+    created_at?: string;
+    updated_at?: string;
+  } | null;
+};
+
+export const getSubscriptionStatus = () =>
+  request<SubscriptionStatusResponse>("/api/lawyers/subscription_status");
+
+export const sendSubscriptionRequest = (
+  data: FormData | { uri: string; name?: string; type?: string },
+) => {
+  let formData: FormData;
+  if (data instanceof FormData) {
+    formData = data;
+  } else {
+    formData = new FormData();
+    formData.append("file", {
+      uri: data.uri,
+      name: data.name || "subscription_invoice.jpg",
+      type: data.type || "image/jpeg",
+    } as unknown as Blob);
+  }
+  return uploadRequest<{ success: boolean; message: string }>(
+    "/api/lawyers/subscription_request",
+    formData,
+  );
+};
+
+
 

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -89,17 +90,7 @@ const EyeIcon = ({ open }: { open: boolean }) =>
     </Svg>
   );
 
-const SparkleIcon = () => (
-  <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M12 3v1m0 16v1M4.22 4.22l.71.71m12.73 12.73.71.71M3 12H2m20 0h-1M4.22 19.78l.71-.71M18.36 5.64l.71-.71M12 8a4 4 0 100 8 4 4 0 000-8z"
-      stroke="#fff"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
+
 
 
 const Toast = ({ message }: { message: string }) => {
@@ -179,8 +170,12 @@ const Login = ({ navigation }: Props) => {
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoBox}>
-              <SparkleIcon />
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("@/assets/images/meezan-logo.jpg")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.title}>مرحباً بعودتك</Text>
             <Text style={styles.subtitle}>سجّل دخولك للمتابعة إلى حسابك</Text>
@@ -290,7 +285,7 @@ export default Login;
 const styles = StyleSheet.create({
   screen: {
     flexGrow: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#f5f6fa",
     justifyContent: "center",
     paddingVertical: 40,
     paddingHorizontal: 20,
@@ -316,40 +311,41 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   toastText: { color: "#fff", fontSize: 13, fontWeight: "500" },
-  header: { alignItems: "center", marginBottom: 32 },
-  logoBox: {
-    width: 56,
-    height: 56,
-    backgroundColor: "#000",
-    borderRadius: 18,
+  header: { alignItems: "center", marginBottom: 28 },
+  logoContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  title: { fontSize: 24, fontWeight: "700", color: "#111827" },
+  logoImage: {
+    width: 220,
+    height: 120,
+    borderRadius: 12,
+  },
+  title: { fontSize: 24, fontWeight: "800", color: "#0d1b2a" },
   subtitle: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginTop: 4,
+    fontSize: 13.5,
+    color: "#64748b",
+    marginTop: 6,
     textAlign: "center",
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: "#e6ecf5",
     padding: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: "#0d1b2a",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   field: { marginBottom: 16 },
   label: {
     fontSize: 13,
-    fontWeight: "500",
-    color: "#374151",
+    fontWeight: "700",
+    color: "#0d1b2a",
     marginBottom: 6,
     textAlign: "right",
   },
@@ -366,12 +362,13 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingRight: 36,
     paddingLeft: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#e2e8f0",
     borderRadius: 12,
-    color: "#111827",
+    backgroundColor: "#f8fafc",
+    color: "#0d1b2a",
   },
   eyeButton: {
     position: "absolute",
@@ -381,41 +378,47 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 18,
   },
   rememberRow: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
   checkbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: "#cbd5e1",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#ffffff",
   },
-  checkboxChecked: { backgroundColor: "#000", borderColor: "#000" },
-  checkmark: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  rememberText: { fontSize: 13, color: "#4B5563" },
-  forgotText: { fontSize: 13, color: "#6B7280" },
+  checkboxChecked: { backgroundColor: "#0d1b2a", borderColor: "#0d1b2a" },
+  checkmark: { color: "#b89355", fontSize: 11, fontWeight: "800" },
+  rememberText: { fontSize: 13, color: "#475569", fontWeight: "500" },
+  forgotText: { fontSize: 13, color: "#b89355", fontWeight: "700" },
   submitButton: {
-    backgroundColor: "#000",
+    backgroundColor: "#0d1b2a",
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: "center",
+    shadowColor: "#0d1b2a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   disabledButton: { opacity: 0.5 },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  submitText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  submitText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
   bottomRow: {
     flexDirection: "row-reverse",
     justifyContent: "center",
-    marginTop: 20,
+    alignItems: "center",
+    marginTop: 22,
   },
-  bottomText: { fontSize: 13, color: "#6B7280" },
+  bottomText: { fontSize: 13.5, color: "#64748b" },
   bottomLink: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#000",
-    textDecorationLine: "underline",
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#b89355",
   },
 });

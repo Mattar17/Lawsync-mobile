@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Animated,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -113,17 +114,7 @@ const EyeIcon = ({ open }: { open: boolean }) =>
     </Svg>
   );
 
-const UserPlusIcon = () => (
-  <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-      stroke="#fff"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
+
 
 
 const Toast = ({
@@ -231,8 +222,12 @@ const Register = ({ navigation }: Props) => {
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoBox}>
-              <UserPlusIcon />
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("@/assets/images/meezan-logo.jpg")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.title}>إنشاء حساب جديد</Text>
             <Text style={styles.subtitle}>
@@ -411,7 +406,7 @@ export default Register;
 const styles = StyleSheet.create({
   screen: {
     flexGrow: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#f5f6fa",
     justifyContent: "center",
     paddingVertical: 40,
     paddingHorizontal: 20,
@@ -432,80 +427,87 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   toastText: { color: "#fff", fontSize: 13, fontWeight: "500" },
-  header: { alignItems: "center", marginBottom: 32 },
-  logoBox: {
-    width: 56,
-    height: 56,
-    backgroundColor: "#000",
-    borderRadius: 18,
+  header: { alignItems: "center", marginBottom: 28 },
+  logoContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  title: { fontSize: 24, fontWeight: "700", color: "#111827" },
+  logoImage: {
+    width: 220,
+    height: 120,
+    borderRadius: 12,
+  },
+  title: { fontSize: 24, fontWeight: "800", color: "#0d1b2a" },
   subtitle: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginTop: 4,
+    fontSize: 13.5,
+    color: "#64748b",
+    marginTop: 6,
     textAlign: "center",
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: "#e6ecf5",
     padding: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: "#0d1b2a",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   field: { marginBottom: 16 },
   label: {
     fontSize: 13,
-    fontWeight: "500",
-    color: "#374151",
+    fontWeight: "700",
+    color: "#0d1b2a",
     marginBottom: 6,
     textAlign: "right",
   },
-  optional: { color: "#9CA3AF", fontWeight: "400" },
+  optional: { color: "#94a3b8", fontWeight: "400" },
   inputRow: { position: "relative", justifyContent: "center" },
   inputIcon: { position: "absolute", right: 12, zIndex: 1 },
   input: {
     width: "100%",
     paddingRight: 36,
     paddingLeft: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#e2e8f0",
     borderRadius: 12,
-    color: "#111827",
+    backgroundColor: "#f8fafc",
+    color: "#0d1b2a",
   },
   inputError: { borderColor: "#FCA5A5" },
   eyeButton: { position: "absolute", left: 12 },
   hint: { fontSize: 11, marginTop: 6, color: "#F87171", textAlign: "right" },
   submitButton: {
-    backgroundColor: "#000",
+    backgroundColor: "#0d1b2a",
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 6,
+    shadowColor: "#0d1b2a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   disabledButton: { opacity: 0.5 },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  submitText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  submitText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
   bottomRow: {
     flexDirection: "row-reverse",
     justifyContent: "center",
-    marginTop: 20,
+    alignItems: "center",
+    marginTop: 22,
   },
-  bottomText: { fontSize: 13, color: "#6B7280" },
+  bottomText: { fontSize: 13.5, color: "#64748b" },
   bottomLink: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#000",
-    textDecorationLine: "underline",
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: "#b89355",
   },
 });
