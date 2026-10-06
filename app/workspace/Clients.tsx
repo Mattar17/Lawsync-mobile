@@ -22,71 +22,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  createClient,
   deleteClient,
   EGYPTIAN_GOVERNORATES,
   getOfficeClients,
-  updateClient,
   uploadClientDocuments,
   type Client,
-  type ClientStatus,
-  type CreateClientInput,
   type EgyptianGovernorate,
 } from "../api/clients";
+import ClientModalForm, {
+  initialClientFormData,
+  type ClientFormData,
+} from "../components/ClientModalForm";
 import { useUserStore } from "../zustandStore/userStore";
-
-const CLIENT_TYPE_OPTIONS = [
-  "فرد",
-  "شركة مساهمة",
-  "شركة تضامن",
-  "شركة ذات مسؤولية محدودة",
-  "شركة توصية بسيطة",
-  "شركة الشخص الواحد",
-  "جهة حكومية",
-  "أخرى",
-];
-
-type ClientFormData = {
-  name: string;
-  client_type: string;
-  file_number: string;
-  phone_number: string;
-  national_id: string;
-  address: string;
-  job: string;
-  governorate: EgyptianGovernorate | "";
-  file_opening_date: string;
-  client_state: ClientStatus;
-  notes: string;
-};
-
-const initialFormData: ClientFormData = {
-  name: "",
-  client_type: "",
-  file_number: "",
-  phone_number: "",
-  national_id: "",
-  address: "",
-  job: "",
-  governorate: "القاهرة",
-  file_opening_date: "",
-  client_state: "نشط",
-  notes: "",
-};
-
-const formatDateValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const parseDateValue = (value: string) => {
-  if (!value) return new Date();
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) return new Date();
-  return new Date(year, month - 1, day);
-};
 
 export default function Clients() {
   const office = useUserStore((state) => state.Office);
@@ -102,18 +49,7 @@ export default function Clients() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
-  const [form, setForm] = useState<ClientFormData>(initialFormData);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showGovPicker, setShowGovPicker] = useState(false);
-  const [govSearchQuery, setGovSearchQuery] = useState("");
-
-  const filteredGovernorates = useMemo(() => {
-    if (!govSearchQuery.trim()) return EGYPTIAN_GOVERNORATES;
-    const q = govSearchQuery.trim();
-    return EGYPTIAN_GOVERNORATES.filter((gov) => gov.includes(q));
-  }, [govSearchQuery]);
+  const [form, setForm] = useState<ClientFormData>(initialClientFormData);
 
   // Upload Documents Modal State
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -171,8 +107,7 @@ export default function Clients() {
   const handleOpenCreate = () => {
     setIsEditing(false);
     setEditingClientId(null);
-    setForm(initialFormData);
-    setFormErrors({});
+    setForm(initialClientFormData);
     setModalVisible(true);
   };
 
@@ -193,80 +128,10 @@ export default function Clients() {
       client_state: client.client_state || "نشط",
       notes: client.notes || "",
     });
-    setFormErrors({});
     setModalVisible(true);
   };
 
-  // Validate form matching backend Zod schema
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
 
-    if (!form.name || form.name.trim().length < 2) {
-      errors.name = "الاسم مطلوب ويجب ألا يقل عن حرفين";
-    }
-
-    if (form.phone_number && form.phone_number.trim().length > 0) {
-      if (!/^\d{11}$/.test(form.phone_number.trim())) {
-        errors.phone_number = "رقم الهاتف غير صحيح، يجب أن يتكون من 11 رقماً";
-      }
-    }
-
-    if (form.national_id && form.national_id.trim().length > 0) {
-      if (!/^\d{14}$/.test(form.national_id.trim())) {
-        errors.national_id = "الرقم القومي غير صحيح، يجب أن يتكون من 14 رقماً";
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Submit Create or Edit
-  const handleSubmitForm = async () => {
-    if (!office) {
-      Alert.alert("خطأ", "المكتب غير محدد");
-      return;
-    }
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const payload: CreateClientInput = {
-        name: form.name.trim(),
-        client_type: form.client_type || undefined,
-        file_number: form.file_number.trim() || undefined,
-        phone_number: form.phone_number.trim() || undefined,
-        national_id: form.national_id.trim() || undefined,
-        address: form.address.trim() || undefined,
-        job: form.job.trim() || undefined,
-        governorate: form.governorate ? form.governorate : undefined,
-        file_opening_date: form.file_opening_date || undefined,
-        client_state: form.client_state,
-        notes: form.notes.trim() || undefined,
-      };
-
-      if (isEditing && editingClientId) {
-        await updateClient(office.id, editingClientId, payload);
-        Alert.alert("نجاح", "تم تحديث بيانات الموكل بنجاح");
-      } else {
-        await createClient(office.id, payload);
-        Alert.alert("نجاح", "تم إضافة الموكل بنجاح");
-      }
-
-      setModalVisible(false);
-      await fetchClients();
-    } catch (error) {
-      Alert.alert(
-        "خطأ",
-        error instanceof Error ? error.message : "حدث خطأ أثناء حفظ بيانات الموكل"
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // Delete Client
   const handleDeleteClient = (client: Client) => {
@@ -623,357 +488,17 @@ export default function Clients() {
       </View>
 
       {/* ===================== CREATE / EDIT CLIENT MODAL ===================== */}
-      <Modal
+      <ClientModalForm
         visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={styles.modalKeyboardContainer}
-          >
-            <View style={styles.modalSheet}>
-              {/* Modal Header */}
-              <View style={styles.modalHeader}>
-                <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
-                  style={styles.modalCloseBtn}
-                >
-                  <Feather name="x" size={20} color="#64748b" />
-                </TouchableOpacity>
-                <Text style={styles.modalTitle}>
-                  {isEditing ? "تعديل بيانات الموكل" : "إضافة موكل جديد"}
-                </Text>
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.formContent}
-              >
-                {/* Full Name */}
-                <Text style={styles.inputLabel}>الاسم الكامل *</Text>
-                <TextInput
-                  style={[styles.textInput, formErrors.name && styles.inputErrorBorder]}
-                  placeholder="مثال: أحمد محمد علي"
-                  placeholderTextColor="#94a3b8"
-                  value={form.name}
-                  onChangeText={(val) => {
-                    setForm((prev) => ({ ...prev, name: val }));
-                    if (formErrors.name) {
-                      setFormErrors((prev) => {
-                        const copy = { ...prev };
-                        delete copy.name;
-                        return copy;
-                      });
-                    }
-                  }}
-                  textAlign="right"
-                />
-                {formErrors.name ? (
-                  <Text style={styles.errorText}>{formErrors.name}</Text>
-                ) : null}
-
-                {/* Client Type */}
-                <Text style={styles.inputLabel}>نوع الموكل</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="مثال: فرد، شركة مساهمة، جهة حكومية..."
-                  placeholderTextColor="#94a3b8"
-                  value={form.client_type}
-                  onChangeText={(text) =>
-                    setForm((prev) => ({ ...prev, client_type: text }))
-                  }
-                  textAlign="right"
-                />
-
-                {/* Phone Number */}
-                <Text style={styles.inputLabel}>رقم الهاتف (11 رقماً)</Text>
-                <TextInput
-                  style={[styles.textInput, formErrors.phone_number && styles.inputErrorBorder]}
-                  placeholder="01012345678"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="phone-pad"
-                  maxLength={11}
-                  value={form.phone_number}
-                  onChangeText={(val) => {
-                    setForm((prev) => ({ ...prev, phone_number: val }));
-                    if (formErrors.phone_number) {
-                      setFormErrors((prev) => {
-                        const copy = { ...prev };
-                        delete copy.phone_number;
-                        return copy;
-                      });
-                    }
-                  }}
-                  textAlign="right"
-                />
-                {formErrors.phone_number ? (
-                  <Text style={styles.errorText}>{formErrors.phone_number}</Text>
-                ) : null}
-
-                {/* National ID */}
-                <Text style={styles.inputLabel}>الرقم القومي (14 رقماً)</Text>
-                <TextInput
-                  style={[styles.textInput, formErrors.national_id && styles.inputErrorBorder]}
-                  placeholder="29801011234567"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="number-pad"
-                  maxLength={14}
-                  value={form.national_id}
-                  onChangeText={(val) => {
-                    setForm((prev) => ({ ...prev, national_id: val }));
-                    if (formErrors.national_id) {
-                      setFormErrors((prev) => {
-                        const copy = { ...prev };
-                        delete copy.national_id;
-                        return copy;
-                      });
-                    }
-                  }}
-                  textAlign="right"
-                />
-                {formErrors.national_id ? (
-                  <Text style={styles.errorText}>{formErrors.national_id}</Text>
-                ) : null}
-
-                {/* File Number */}
-                <Text style={styles.inputLabel}>رقم الملف</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="مثال: 2026/105"
-                  placeholderTextColor="#94a3b8"
-                  value={form.file_number}
-                  onChangeText={(val) => setForm((prev) => ({ ...prev, file_number: val }))}
-                  textAlign="right"
-                />
-
-                {/* Governorate Selector */}
-                <Text style={styles.inputLabel}>المحافظة</Text>
-                <TouchableOpacity
-                  style={styles.selectInput}
-                  onPress={() => setShowGovPicker(true)}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="chevron-down" size={16} color="#64748b" />
-                  <Text style={form.governorate ? styles.selectValueText : styles.selectPlaceholderText}>
-                    {form.governorate || "اختر المحافظة"}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Address */}
-                <Text style={styles.inputLabel}>العنوان التفصيلي</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="مثال: شارع مصطفى النحاس، مدينة نصر"
-                  placeholderTextColor="#94a3b8"
-                  value={form.address}
-                  onChangeText={(val) => setForm((prev) => ({ ...prev, address: val }))}
-                  textAlign="right"
-                />
-
-                {/* Profession / Job */}
-                <Text style={styles.inputLabel}>المهنة / الوظيفة</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="مثال: مهندس برمجيات"
-                  placeholderTextColor="#94a3b8"
-                  value={form.job}
-                  onChangeText={(val) => setForm((prev) => ({ ...prev, job: val }))}
-                  textAlign="right"
-                />
-
-                {/* File Opening Date */}
-                <Text style={styles.inputLabel}>تاريخ فتح الملف</Text>
-                <TouchableOpacity
-                  style={styles.selectInput}
-                  onPress={() => setShowDatePicker(true)}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="calendar" size={16} color="#b89355" />
-                  <Text
-                    style={
-                      form.file_opening_date ? styles.selectValueText : styles.selectPlaceholderText
-                    }
-                  >
-                    {form.file_opening_date || "اختر تاريخ فتح الملف"}
-                  </Text>
-                </TouchableOpacity>
-
-                {showDatePicker ? (
-                  <DateTimePicker
-                    value={parseDateValue(form.file_opening_date)}
-                    mode="date"
-                    display="default"
-                    onChange={(_, date) => {
-                      setShowDatePicker(false);
-                      if (date) {
-                        setForm((prev) => ({
-                          ...prev,
-                          file_opening_date: formatDateValue(date),
-                        }));
-                      }
-                    }}
-                  />
-                ) : null}
-
-                {/* Client State (Active / Inactive) */}
-                <Text style={styles.inputLabel}>حالة الموكل</Text>
-                <View style={styles.statusRadioRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.statusRadioBtn,
-                      form.client_state === "نشط" && styles.statusRadioActive,
-                    ]}
-                    onPress={() => setForm((prev) => ({ ...prev, client_state: "نشط" }))}
-                  >
-                    <Text
-                      style={[
-                        styles.statusRadioText,
-                        form.client_state === "نشط" && styles.statusRadioTextActive,
-                      ]}
-                    >
-                      نشط
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.statusRadioBtn,
-                      form.client_state === "متوقف" && styles.statusRadioInactive,
-                    ]}
-                    onPress={() => setForm((prev) => ({ ...prev, client_state: "متوقف" }))}
-                  >
-                    <Text
-                      style={[
-                        styles.statusRadioText,
-                        form.client_state === "متوقف" && styles.statusRadioTextInactive,
-                      ]}
-                    >
-                      متوقف
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Notes */}
-                <Text style={styles.inputLabel}>ملاحظات</Text>
-                <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="أي تفاصيل أو ملاحظات إضافية عن الموكل..."
-                  placeholderTextColor="#94a3b8"
-                  value={form.notes}
-                  onChangeText={(val) => setForm((prev) => ({ ...prev, notes: val }))}
-                  multiline
-                  numberOfLines={3}
-                  textAlign="right"
-                />
-
-                {/* Action Submit Button */}
-                <TouchableOpacity
-                  style={styles.submitBtn}
-                  onPress={handleSubmitForm}
-                  disabled={isSubmitting}
-                  activeOpacity={0.8}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.submitBtnText}>
-                      {isEditing ? "حفظ التعديلات" : "إضافة الموكل"}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-
-          {/* ===================== GOVERNORATE PICKER OVERLAY ===================== */}
-          {showGovPicker && (
-            <View style={styles.pickerOverlay}>
-              <Pressable
-                style={StyleSheet.absoluteFill}
-                onPress={() => {
-                  setShowGovPicker(false);
-                  setGovSearchQuery("");
-                }}
-              />
-              <View style={styles.pickerSheet}>
-                <View style={styles.pickerHeaderRow}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowGovPicker(false);
-                      setGovSearchQuery("");
-                    }}
-                    style={styles.pickerCloseBtn}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Feather name="x" size={20} color="#64748b" />
-                  </TouchableOpacity>
-                  <Text style={styles.pickerTitle}>اختر المحافظة</Text>
-                </View>
-
-                <View style={styles.pickerSearchContainer}>
-                  <Feather name="search" size={16} color="#94a3b8" />
-                  <TextInput
-                    style={styles.pickerSearchInput}
-                    placeholder="ابحث عن المحافظة..."
-                    placeholderTextColor="#94a3b8"
-                    value={govSearchQuery}
-                    onChangeText={setGovSearchQuery}
-                    textAlign="right"
-                  />
-                  {govSearchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setGovSearchQuery("")}>
-                      <Feather name="x" size={14} color="#94a3b8" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <ScrollView
-                  style={styles.pickerList}
-                  contentContainerStyle={{ paddingBottom: 10 }}
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator={true}
-                >
-                  {filteredGovernorates.map((gov) => {
-                    const isSelected = form.governorate === gov;
-                    return (
-                      <TouchableOpacity
-                        key={gov}
-                        style={[
-                          styles.pickerItem,
-                          isSelected && styles.pickerItemActive,
-                        ]}
-                        onPress={() => {
-                          setForm((prev) => ({ ...prev, governorate: gov }));
-                          setShowGovPicker(false);
-                          setGovSearchQuery("");
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        {isSelected ? (
-                          <Feather name="check" size={16} color="#b89355" />
-                        ) : (
-                          <View style={{ width: 16 }} />
-                        )}
-                        <Text
-                          style={[
-                            styles.pickerItemText,
-                            isSelected && styles.pickerItemTextActive,
-                          ]}
-                        >
-                          {gov}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            </View>
-          )}
-        </View>
-      </Modal>
+        isEditing={isEditing}
+        editingClientId={editingClientId}
+        initialData={form}
+        officeId={office?.id}
+        onClose={() => setModalVisible(false)}
+        onSuccess={() => {
+          fetchClients();
+        }}
+      />
 
       {/* ===================== UPLOAD DOCUMENTS MODAL ===================== */}
       <Modal

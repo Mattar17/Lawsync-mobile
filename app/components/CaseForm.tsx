@@ -1,8 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     ScrollView,
@@ -12,8 +15,14 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import {
+    getOfficeClients,
+    type Client,
+} from "../api/clients";
 import { CaseT } from "../types";
 import { caseSchema } from "../validation/caseSchema";
+import { useUserStore } from "../zustandStore/userStore";
+import ClientModalForm from "./ClientModalForm";
 
 export const EMPTY_CASE: CaseT = {
   case_number: "",
@@ -129,9 +138,217 @@ export default function CaseForm({
   const [showNext, setShowNext] = useState(false);
   const [showOpened, setShowOpened] = useState(false);
 
+  const currentOffice = useUserStore((state) => state.Office);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [clientMode, setClientMode] = useState<"existing" | "manual">(
+    initialValues?.client_name ? "manual" : "existing"
+  );
+  const [showClientPickerModal, setShowClientPickerModal] = useState(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+
+  // Add Client Modal State (extracted reusable ClientModalForm)
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+
+  const handleOpenAddClient = () => {
+    // Close picker first to avoid nested modal issues on iOS / Android
+    setShowClientPickerModal(false);
+    setShowAddClientModal(true);
+  };
+
+  const handleClientCreatedSuccessfully = (newClient: Client) => {
+    // Add to local client list so it's instantly available
+    setClients((prev) => [newClient, ...prev]);
+
+    // Automatically select newly created client for this case
+    setCaseDetails((prev) => ({
+      ...prev,
+      client_name: newClient.name,
+      client_national_id: newClient.national_id || "",
+      client_type: newClient.client_type || "",
+    }));
+    setErrors((prev) => ({ ...prev, client_name: "" }));
+
+    // Ensure picker is closed
+    setShowClientPickerModal(false);
+    setShowAddClientModal(false);
+  };
+
+  useEffect(() => {
+    if (!currentOffice?.id) return;
+    setLoadingClients(true);
+    getOfficeClients(currentOffice.id)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setClients(list);
+      })
+      .catch((err) => {
+        console.log("Error loading clients in CaseForm:", err);
+      })
+      .finally(() => {
+        setLoadingClients(false);
+      });
+  }, [currentOffice?.id]);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearchQuery.trim()) return clients;
+    const q = clientSearchQuery.trim().toLowerCase();
+    return clients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.national_id && c.national_id.includes(q)) ||
+        (c.phone_number && c.phone_number.includes(q)) ||
+        (c.client_type && c.client_type.toLowerCase().includes(q))
+    );
+  }, [clients, clientSearchQuery]);
+
+  const handleSelectClient = (client: Client) => {
+    setCaseDetails((prev) => ({
+      ...prev,
+      client_name: client.name,
+      client_national_id: client.national_id || "",
+      client_type: client.client_type || "",
+    }));
+    setErrors((prev) => ({ ...prev, client_name: "" }));
+    setShowClientPickerModal(false);
+  };
+
+  const handleClearSelectedClient = () => {
+    setCaseDetails((prev) => ({
+      ...prev,
+      client_name: "",
+      client_national_id: "",
+      client_type: "",
+    }));
+  };
+
+  const handleClientModeChange = (mode: "existing" | "manual") => {
+    setClientMode(mode);
+    setErrors((prev) => ({ ...prev, client_name: "" }));
+  };
+
   const handleChange = (key: keyof CaseT, value: string) => {
     setCaseDetails((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: "" }));
+  };
+
+  // ─── 4-Stage Wizard Setup ───
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
+  const STEPS = [
+    { id: 1, title: "بيانات القضية", icon: "folder" },
+    { id: 2, title: "أطراف الدعوى", icon: "users" },
+    { id: 3, title: "المحكمة والجلسات", icon: "calendar" },
+    { id: 4, title: "الملاحظات والتأكيد", icon: "check-circle" },
+  ];
+
+  // Validate only the current stage before allowing user to proceed
+  const validateStep = (stepNumber: number): boolean => {
+    const newErrors: Record<string, string> = { ...errors };
+
+    if (stepNumber === 1) {
+      let valid = true;
+      if (!caseDetails.case_number || !caseDetails.case_number.trim()) {
+        newErrors.case_number = "رقم القضية مطلوب";
+        valid = false;
+      } else {
+        delete newErrors.case_number;
+      }
+
+      if (!caseDetails.case_year || !caseDetails.case_year.trim()) {
+        newErrors.case_year = "سنة القضية مطلوبة";
+        valid = false;
+      } else if (!/^\d{4}$/.test(caseDetails.case_year.trim())) {
+        newErrors.case_year = "السنة غير صحيحة (4 أرقام)";
+        valid = false;
+      } else {
+        delete newErrors.case_year;
+      }
+      setErrors(newErrors);
+      return valid;
+    }
+
+    if (stepNumber === 2) {
+      let valid = true;
+      if (!caseDetails.client_name || !caseDetails.client_name.trim()) {
+        newErrors.client_name = "اسم الموكل مطلوب";
+        valid = false;
+      } else {
+        delete newErrors.client_name;
+      }
+
+      if (!caseDetails.client_opponent_name || !caseDetails.client_opponent_name.trim()) {
+        newErrors.client_opponent_name = "اسم الخصم مطلوب";
+        valid = false;
+      } else {
+        delete newErrors.client_opponent_name;
+      }
+
+      if (
+        caseDetails.client_national_id &&
+        caseDetails.client_national_id.trim() &&
+        !/^\d{14}$/.test(caseDetails.client_national_id.trim())
+      ) {
+        newErrors.client_national_id = "الرقم القومي غير صحيح (14 رقماً)";
+        valid = false;
+      } else {
+        delete newErrors.client_national_id;
+      }
+
+      if (
+        caseDetails.client_opponent_national_id &&
+        caseDetails.client_opponent_national_id.trim() &&
+        !/^\d{14}$/.test(caseDetails.client_opponent_national_id.trim())
+      ) {
+        newErrors.client_opponent_national_id = "الرقم القومي للخصم غير صحيح (14 رقماً)";
+        valid = false;
+      } else {
+        delete newErrors.client_opponent_national_id;
+      }
+
+      setErrors(newErrors);
+      return valid;
+    }
+
+    if (stepNumber === 3) {
+      let valid = true;
+      if (caseDetails.latest_court_session_date) {
+        const latestD = new Date(caseDetails.latest_court_session_date);
+        if (latestD > new Date()) {
+          newErrors.latest_court_session_date = "تاريخ آخر جلسة لا يمكن أن يكون في المستقبل";
+          valid = false;
+        } else {
+          delete newErrors.latest_court_session_date;
+        }
+      }
+      setErrors(newErrors);
+      return valid;
+    }
+
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep(currentStep)) {
+      if (currentStep < 4) {
+        setCurrentStep((prev) => prev + 1);
+      }
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
+    }
+  };
+
+  const handleSelectStepDirectly = (stepId: number) => {
+    // Only allow clicking previous steps or immediate next if valid
+    if (stepId < currentStep) {
+      setCurrentStep(stepId);
+    } else if (stepId === currentStep + 1 && validateStep(currentStep)) {
+      setCurrentStep(stepId);
+    }
   };
 
   const handleSubmit = async () => {
@@ -164,11 +381,26 @@ export default function CaseForm({
 
     if (!validationResult.success) {
       const fieldErrors: Record<string, string> = {};
+      let firstErrorStep = 4;
       validationResult.error.issues.forEach((error) => {
         const field = error.path[0] as string;
         if (!fieldErrors[field]) fieldErrors[field] = error.message;
+
+        if (field === "case_number" || field === "case_year") {
+          firstErrorStep = Math.min(firstErrorStep, 1);
+        } else if (
+          field === "client_name" ||
+          field === "client_opponent_name" ||
+          field === "client_national_id" ||
+          field === "client_opponent_national_id"
+        ) {
+          firstErrorStep = Math.min(firstErrorStep, 2);
+        } else if (field === "latest_court_session_date") {
+          firstErrorStep = Math.min(firstErrorStep, 3);
+        }
       });
       setErrors(fieldErrors);
+      setCurrentStep(firstErrorStep);
       return;
     }
 
@@ -195,383 +427,866 @@ export default function CaseForm({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {title ? <Text style={styles.title}>{title}</Text> : null}
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {title ? <Text style={styles.title}>{title}</Text> : null}
 
-        {/* ── case identity ── */}
-        <SectionHeader label="بيانات القضية" />
-        <View style={styles.card}>
-          <View style={styles.rowFields}>
-            <View style={[styles.fieldWrapper, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>رقم القضية *</Text>
-              <TextInput
-                placeholder="مثال: 1234"
-                placeholderTextColor="#9ca3af"
-                style={styles.input}
-                keyboardType="numeric"
-                value={caseDetails.case_number}
-                onChangeText={(t) => handleChange("case_number", t)}
-              />
-              {errors.case_number ? (
-                <Text style={styles.errorText}>{errors.case_number}</Text>
-              ) : null}
-            </View>
+          {/* ── 4-Stage Stepper Header (Like ForgotPasswordModal) ── */}
+          <View style={styles.stepperContainer}>
+            {STEPS.map((step, idx) => {
+              const isActive = currentStep === step.id;
+              const isPassed = currentStep > step.id;
 
-            <View style={[styles.fieldWrapper, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>السنة *</Text>
-              <TextInput
-                placeholder="مثال: 2024"
-                placeholderTextColor="#9ca3af"
-                style={styles.input}
-                keyboardType="numeric"
-                maxLength={4}
-                value={caseDetails.case_year}
-                onChangeText={(t) => handleChange("case_year", t)}
-              />
-              {errors.case_year ? (
-                <Text style={styles.errorText}>{errors.case_year}</Text>
-              ) : null}
-            </View>
+              return (
+                <View key={step.id} style={styles.stepItemWrapper}>
+                  <View style={styles.stepDotRow}>
+                    {/* Connecting line to the next step */}
+                    {idx < STEPS.length - 1 && (
+                      <View
+                        style={[
+                          styles.stepLine,
+                          currentStep > idx + 1 && styles.stepLineActive,
+                        ]}
+                      />
+                    )}
+
+                    {/* Step Circle Button */}
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleSelectStepDirectly(step.id)}
+                      style={[
+                        styles.stepDot,
+                        isActive && styles.stepDotActive,
+                        isPassed && styles.stepDotPassed,
+                      ]}
+                    >
+                      {isPassed ? (
+                        <Feather name="check" size={13} color="#ffffff" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.stepDotText,
+                            isActive && styles.stepDotTextActive,
+                          ]}
+                        >
+                          {step.id}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Step Label */}
+                  <Text
+                    numberOfLines={2}
+                    style={[
+                      styles.stepLabel,
+                      isActive && styles.stepLabelActive,
+                      isPassed && styles.stepLabelPassed,
+                    ]}
+                  >
+                    {step.title}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
-          <View style={styles.inCardDivider} />
+          {/* ════════════ STAGE 1: بيانات القضية ════════════ */}
+          {currentStep === 1 && (
+            <View>
+              <SectionHeader label="المرحلة الأولى: بيانات القضية" />
+              <View style={styles.card}>
+                <View style={styles.rowFields}>
+                  <View style={[styles.fieldWrapper, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>رقم القضية *</Text>
+                    <TextInput
+                      placeholder="مثال: 1234"
+                      placeholderTextColor="#9ca3af"
+                      style={[
+                        styles.input,
+                        errors.case_number && styles.inputErrorBorder,
+                      ]}
+                      keyboardType="numeric"
+                      value={caseDetails.case_number}
+                      onChangeText={(t) => handleChange("case_number", t)}
+                    />
+                    {errors.case_number ? (
+                      <Text style={styles.errorText}>{errors.case_number}</Text>
+                    ) : null}
+                  </View>
 
-          <FieldWrapper label="نوع القضية" error={errors.case_type}>
-            <TextInput
-              placeholder="مثال: مدني، تجاري، عمالي، جنائي..."
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.case_type ?? ""}
-              onChangeText={(t) => handleChange("case_type", t)}
-            />
-          </FieldWrapper>
+                  <View style={[styles.fieldWrapper, { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>السنة *</Text>
+                    <TextInput
+                      placeholder="مثال: 2024"
+                      placeholderTextColor="#9ca3af"
+                      style={[
+                        styles.input,
+                        errors.case_year && styles.inputErrorBorder,
+                      ]}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      value={caseDetails.case_year}
+                      onChangeText={(t) => handleChange("case_year", t)}
+                    />
+                    {errors.case_year ? (
+                      <Text style={styles.errorText}>{errors.case_year}</Text>
+                    ) : null}
+                  </View>
+                </View>
 
-          <View style={styles.inCardDivider} />
+                <View style={styles.inCardDivider} />
 
-          <FieldWrapper label="درجة التقاضي" error={errors.case_degree}>
-            <TextInput
-              placeholder="مثال: أول درجة، استئناف، نقض..."
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.case_degree ?? ""}
-              onChangeText={(t) => handleChange("case_degree", t)}
-            />
-          </FieldWrapper>
-        </View>
+                <FieldWrapper label="نوع القضية (اختياري)" error={errors.case_type}>
+                  <TextInput
+                    placeholder="مثال: مدني، تجاري، عمالي، جنائي..."
+                    placeholderTextColor="#9ca3af"
+                    style={styles.input}
+                    value={caseDetails.case_type ?? ""}
+                    onChangeText={(t) => handleChange("case_type", t)}
+                  />
+                </FieldWrapper>
 
-        {/* ── client ── */}
-        <SectionHeader label="بيانات الموكل" />
-        <View style={styles.card}>
-          <FieldWrapper label="اسم الموكل *" error={errors.client_name}>
-            <TextInput
-              placeholder="الاسم الكامل للموكل"
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.client_name}
-              onChangeText={(t) => handleChange("client_name", t)}
-            />
-          </FieldWrapper>
+                <View style={styles.inCardDivider} />
 
-          <View style={styles.inCardDivider} />
+                <FieldWrapper label="درجة التقاضي (اختياري)" error={errors.case_degree}>
+                  <TextInput
+                    placeholder="مثال: أول درجة، استئناف، نقض..."
+                    placeholderTextColor="#9ca3af"
+                    style={styles.input}
+                    value={caseDetails.case_degree ?? ""}
+                    onChangeText={(t) => handleChange("case_degree", t)}
+                  />
+                </FieldWrapper>
+              </View>
+            </View>
+          )}
 
-          <FieldWrapper label="صفة الموكل" error={errors.client_role}>
-            <RadioGroup
-              value={caseDetails.client_role ?? "مدعي"}
-              onChange={(value) => handleChange("client_role", value)}
-              options={roleOptions}
-            />
-          </FieldWrapper>
+          {/* ════════════ STAGE 2: أطراف الدعوى ════════════ */}
+          {currentStep === 2 && (
+            <View>
+              {/* ── Client ── */}
+              <SectionHeader label="المرحلة الثانية: بيانات الموكل والخصم" />
+              <View style={styles.card}>
+                {/* Segmented Mode Selector */}
+                <View style={styles.clientModeToggle}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleClientModeChange("existing")}
+                    style={[
+                      styles.clientModeBtn,
+                      clientMode === "existing" && styles.clientModeBtnActive,
+                    ]}
+                  >
+                    <Feather
+                      name="users"
+                      size={15}
+                      color={clientMode === "existing" ? "#ffffff" : "#64748b"}
+                    />
+                    <Text
+                      style={[
+                        styles.clientModeText,
+                        clientMode === "existing" && styles.clientModeTextActive,
+                      ]}
+                    >
+                      اختيار موكل مسجل
+                    </Text>
+                  </TouchableOpacity>
 
-          <View style={styles.inCardDivider} />
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleClientModeChange("manual")}
+                    style={[
+                      styles.clientModeBtn,
+                      clientMode === "manual" && styles.clientModeBtnActive,
+                    ]}
+                  >
+                    <Feather
+                      name="edit-3"
+                      size={15}
+                      color={clientMode === "manual" ? "#ffffff" : "#64748b"}
+                    />
+                    <Text
+                      style={[
+                        styles.clientModeText,
+                        clientMode === "manual" && styles.clientModeTextActive,
+                      ]}
+                    >
+                      إدخال يدوي
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-          <FieldWrapper
-            label="الرقم القومي للموكل (اختياري)"
-            error={errors.client_national_id}
-          >
-            <TextInput
-              placeholder="14 رقماً"
-              placeholderTextColor="#9ca3af"
-              keyboardType="numeric"
-              maxLength={14}
-              style={styles.input}
-              value={caseDetails.client_national_id ?? ""}
-              onChangeText={(t) => handleChange("client_national_id", t)}
-            />
-          </FieldWrapper>
+                <View style={styles.inCardDivider} />
 
-          <View style={styles.inCardDivider} />
+                {/* Mode 1: Existing Client */}
+                {clientMode === "existing" ? (
+                  <View style={{ paddingVertical: 4 }}>
+                    {caseDetails.client_name ? (
+                      <View style={styles.selectedClientCard}>
+                        <View style={styles.selectedClientHeader}>
+                          <View style={styles.selectedClientBadge}>
+                            <Feather name="check-circle" size={13} color="#059669" />
+                            <Text style={styles.selectedClientBadgeText}>موكل محدد</Text>
+                          </View>
+                          <View style={{ flexDirection: "row", gap: 8 }}>
+                            <TouchableOpacity
+                              onPress={() => setShowClientPickerModal(true)}
+                              style={styles.changeClientBtn}
+                            >
+                              <Feather name="refresh-cw" size={12} color="#0e2038" />
+                              <Text style={styles.changeClientBtnText}>تغيير</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={handleClearSelectedClient}
+                              style={styles.clearClientBtn}
+                            >
+                              <Feather name="trash-2" size={13} color="#ef4444" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
 
-          <FieldWrapper label="نوع الموكل" error={errors.client_type}>
-            <TextInput
-              placeholder="مثال: فرد، شركة مساهمة، جهة حكومية..."
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.client_type ?? ""}
-              onChangeText={(t) => handleChange("client_type", t)}
-            />
-          </FieldWrapper>
-        </View>
+                        <Text style={styles.selectedClientName}>
+                          {caseDetails.client_name}
+                        </Text>
 
-        {/* ── opponent ── */}
-        <SectionHeader label="بيانات الخصم" />
-        <View style={styles.card}>
-          <FieldWrapper label="اسم الخصم *" error={errors.client_opponent_name}>
-            <TextInput
-              placeholder="الاسم الكامل للخصم"
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.client_opponent_name}
-              onChangeText={(t) => handleChange("client_opponent_name", t)}
-            />
-          </FieldWrapper>
+                        {(!!caseDetails.client_type || !!caseDetails.client_national_id) && (
+                          <View style={styles.selectedClientMetaRow}>
+                            {!!caseDetails.client_type && (
+                              <View style={styles.metaPill}>
+                                <Feather name="briefcase" size={11} color="#64748b" />
+                                <Text style={styles.metaPillText}>
+                                  {caseDetails.client_type}
+                                </Text>
+                              </View>
+                            )}
+                            {!!caseDetails.client_national_id && (
+                              <View style={styles.metaPill}>
+                                <Feather name="credit-card" size={11} color="#64748b" />
+                                <Text style={styles.metaPillText}>
+                                  {caseDetails.client_national_id}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    ) : (
+                      <FieldWrapper
+                        label="اختر موكلاً مسجلاً *"
+                        error={errors.client_name}
+                      >
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => setShowClientPickerModal(true)}
+                          style={[
+                            styles.pickerButton,
+                            errors.client_name ? styles.inputErrorBorder : null,
+                          ]}
+                        >
+                          <Feather name="chevron-down" size={18} color="#6b7280" />
+                          <View style={styles.pickerButtonContent}>
+                            <Text style={styles.pickerPlaceholderText}>
+                              {loadingClients
+                                ? "جاري تحميل قائمة الموكلين..."
+                                : "اضغط لاختيار موكل من قائمة المكتب..."}
+                            </Text>
+                            <Feather name="search" size={16} color="#94a3b8" />
+                          </View>
+                        </TouchableOpacity>
+                      </FieldWrapper>
+                    )}
+                  </View>
+                ) : (
+                  /* Mode 2: Manual Entry */
+                  <View>
+                    <FieldWrapper label="اسم الموكل *" error={errors.client_name}>
+                      <TextInput
+                        placeholder="الاسم الكامل للموكل"
+                        placeholderTextColor="#9ca3af"
+                        style={[
+                          styles.input,
+                          errors.client_name && styles.inputErrorBorder,
+                        ]}
+                        value={caseDetails.client_name}
+                        onChangeText={(t) => handleChange("client_name", t)}
+                      />
+                    </FieldWrapper>
 
-          <View style={styles.inCardDivider} />
+                    <View style={styles.inCardDivider} />
 
-          <FieldWrapper
-            label="الرقم القومي للخصم (اختياري)"
-            error={errors.client_opponent_national_id}
-          >
-            <TextInput
-              placeholder="14 رقماً"
-              placeholderTextColor="#9ca3af"
-              keyboardType="numeric"
-              maxLength={14}
-              style={styles.input}
-              value={caseDetails.client_opponent_national_id ?? ""}
-              onChangeText={(t) =>
-                handleChange("client_opponent_national_id", t)
-              }
-            />
-          </FieldWrapper>
-        </View>
+                    <FieldWrapper
+                      label="الرقم القومي للموكل (اختياري)"
+                      error={errors.client_national_id}
+                    >
+                      <TextInput
+                        placeholder="14 رقماً"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="numeric"
+                        maxLength={14}
+                        style={[
+                          styles.input,
+                          errors.client_national_id && styles.inputErrorBorder,
+                        ]}
+                        value={caseDetails.client_national_id ?? ""}
+                        onChangeText={(t) => handleChange("client_national_id", t)}
+                      />
+                    </FieldWrapper>
 
-        {/* ── sessions & court ── */}
-        <SectionHeader label="المحكمة والجلسات" />
-        <View style={styles.card}>
-          <FieldWrapper label="اسم المحكمة" error={errors.court_name}>
-            <TextInput
-              placeholder="مثال: محكمة شمال القاهرة الابتدائية"
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.court_name ?? ""}
-              onChangeText={(t) => handleChange("court_name", t)}
-            />
-          </FieldWrapper>
+                    <View style={styles.inCardDivider} />
 
-          <View style={styles.inCardDivider} />
+                    <FieldWrapper label="نوع الموكل (اختياري)" error={errors.client_type}>
+                      <TextInput
+                        placeholder="مثال: فرد، شركة مساهمة، جهة حكومية..."
+                        placeholderTextColor="#9ca3af"
+                        style={styles.input}
+                        value={caseDetails.client_type ?? ""}
+                        onChangeText={(t) => handleChange("client_type", t)}
+                      />
+                    </FieldWrapper>
+                  </View>
+                )}
 
-          <FieldWrapper label="الدائرة / رقم الدائرة" error={errors.court_circuit}>
-            <TextInput
-              placeholder="مثال: الدائرة 3 مدني كلي"
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.court_circuit ?? ""}
-              onChangeText={(t) => handleChange("court_circuit", t)}
-            />
-          </FieldWrapper>
+                {/* Client Role */}
+                <View style={styles.inCardDivider} />
+                <FieldWrapper label="صفة الموكل" error={errors.client_role}>
+                  <RadioGroup
+                    value={caseDetails.client_role ?? "مدعي"}
+                    onChange={(value) => handleChange("client_role", value)}
+                    options={roleOptions}
+                  />
+                </FieldWrapper>
+              </View>
 
-          <View style={styles.inCardDivider} />
+              {/* ── Opponent ── */}
+              <SectionHeader label="بيانات الخصم" />
+              <View style={styles.card}>
+                <FieldWrapper label="اسم الخصم *" error={errors.client_opponent_name}>
+                  <TextInput
+                    placeholder="الاسم الكامل للخصم"
+                    placeholderTextColor="#9ca3af"
+                    style={[
+                      styles.input,
+                      errors.client_opponent_name && styles.inputErrorBorder,
+                    ]}
+                    value={caseDetails.client_opponent_name}
+                    onChangeText={(t) => handleChange("client_opponent_name", t)}
+                  />
+                </FieldWrapper>
 
-          <FieldWrapper
-            label="تاريخ آخر جلسة (اختياري)"
-            error={errors.latest_court_session_date}
-          >
-            <View style={styles.datePickerContainer}>
-              <Pressable
-                style={styles.dateBtn}
-                onPress={() => setShowLatest(true)}
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper
+                  label="الرقم القومي للخصم (اختياري)"
+                  error={errors.client_opponent_national_id}
+                >
+                  <TextInput
+                    placeholder="14 رقماً"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="numeric"
+                    maxLength={14}
+                    style={[
+                      styles.input,
+                      errors.client_opponent_national_id && styles.inputErrorBorder,
+                    ]}
+                    value={caseDetails.client_opponent_national_id ?? ""}
+                    onChangeText={(t) =>
+                      handleChange("client_opponent_national_id", t)
+                    }
+                  />
+                </FieldWrapper>
+              </View>
+            </View>
+          )}
+
+          {/* ════════════ STAGE 3: المحكمة والجلسات ════════════ */}
+          {currentStep === 3 && (
+            <View>
+              <SectionHeader label="المرحلة الثالثة: المحكمة والجلسات" />
+              <View style={styles.card}>
+                <FieldWrapper label="اسم المحكمة" error={errors.court_name}>
+                  <TextInput
+                    placeholder="مثال: محكمة شمال القاهرة الابتدائية"
+                    placeholderTextColor="#9ca3af"
+                    style={styles.input}
+                    value={caseDetails.court_name ?? ""}
+                    onChangeText={(t) => handleChange("court_name", t)}
+                  />
+                </FieldWrapper>
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper label="الدائرة / رقم الدائرة" error={errors.court_circuit}>
+                  <TextInput
+                    placeholder="مثال: الدائرة 3 مدني كلي"
+                    placeholderTextColor="#9ca3af"
+                    style={styles.input}
+                    value={caseDetails.court_circuit ?? ""}
+                    onChangeText={(t) => handleChange("court_circuit", t)}
+                  />
+                </FieldWrapper>
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper
+                  label="تاريخ آخر جلسة (اختياري)"
+                  error={errors.latest_court_session_date}
+                >
+                  <View style={styles.datePickerContainer}>
+                    <Pressable
+                      style={styles.dateBtn}
+                      onPress={() => setShowLatest(true)}
+                    >
+                      <Feather name="calendar" size={16} color="#6b7280" />
+                      <Text
+                        style={[
+                          styles.dateBtnText,
+                          caseDetails.latest_court_session_date && styles.dateBtnFilled,
+                        ]}
+                      >
+                        {caseDetails.latest_court_session_date || "اختر التاريخ"}
+                      </Text>
+                    </Pressable>
+                    {caseDetails.latest_court_session_date ? (
+                      <TouchableOpacity
+                        style={styles.clearDateBtn}
+                        onPress={() => handleChange("latest_court_session_date", "")}
+                      >
+                        <Feather name="x" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </FieldWrapper>
+
+                {showLatest && (
+                  <DateTimePicker
+                    value={
+                      caseDetails.latest_court_session_date
+                        ? new Date(caseDetails.latest_court_session_date)
+                        : latestDate
+                    }
+                    maximumDate={new Date()}
+                    mode="date"
+                    is24Hour
+                    onChange={(_, selectedDate) => {
+                      setShowLatest(false);
+                      if (selectedDate) {
+                        setLatestDate(selectedDate);
+                        handleChange(
+                          "latest_court_session_date",
+                          selectedDate.toISOString().split("T")[0],
+                        );
+                      }
+                    }}
+                  />
+                )}
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper
+                  label="تاريخ الجلسة القادمة (اختياري)"
+                  error={errors.next_court_session_date}
+                >
+                  <View style={styles.datePickerContainer}>
+                    <Pressable style={styles.dateBtn} onPress={() => setShowNext(true)}>
+                      <Feather name="calendar" size={16} color="#2563eb" />
+                      <Text
+                        style={[
+                          styles.dateBtnText,
+                          caseDetails.next_court_session_date && styles.dateBtnFilled,
+                          caseDetails.next_court_session_date
+                            ? { color: "#2563eb" }
+                            : null,
+                        ]}
+                      >
+                        {caseDetails.next_court_session_date || "اختر التاريخ"}
+                      </Text>
+                    </Pressable>
+                    {caseDetails.next_court_session_date ? (
+                      <TouchableOpacity
+                        style={styles.clearDateBtn}
+                        onPress={() => handleChange("next_court_session_date", "")}
+                      >
+                        <Feather name="x" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </FieldWrapper>
+
+                {showNext && (
+                  <DateTimePicker
+                    value={
+                      caseDetails.next_court_session_date
+                        ? new Date(caseDetails.next_court_session_date)
+                        : nextDate
+                    }
+                    mode="date"
+                    is24Hour
+                    onChange={(_, selectedDate) => {
+                      setShowNext(false);
+                      if (selectedDate) {
+                        setNextDate(selectedDate);
+                        handleChange(
+                          "next_court_session_date",
+                          selectedDate.toISOString().split("T")[0],
+                        );
+                      }
+                    }}
+                  />
+                )}
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper
+                  label="تاريخ فتح القضية (اختياري)"
+                  error={errors.opened_at}
+                >
+                  <View style={styles.datePickerContainer}>
+                    <Pressable
+                      style={styles.dateBtn}
+                      onPress={() => setShowOpened(true)}
+                    >
+                      <Feather name="calendar" size={16} color="#6b7280" />
+                      <Text
+                        style={[
+                          styles.dateBtnText,
+                          caseDetails.opened_at && styles.dateBtnFilled,
+                        ]}
+                      >
+                        {caseDetails.opened_at || "اختر التاريخ"}
+                      </Text>
+                    </Pressable>
+                    {caseDetails.opened_at ? (
+                      <TouchableOpacity
+                        style={styles.clearDateBtn}
+                        onPress={() => handleChange("opened_at", "")}
+                      >
+                        <Feather name="x" size={16} color="#ef4444" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </FieldWrapper>
+
+                {showOpened && (
+                  <DateTimePicker
+                    value={
+                      caseDetails.opened_at
+                        ? new Date(caseDetails.opened_at)
+                        : openedDate
+                    }
+                    mode="date"
+                    is24Hour
+                    onChange={(_, selectedDate) => {
+                      setShowOpened(false);
+                      if (selectedDate) {
+                        setOpenedDate(selectedDate);
+                        handleChange(
+                          "opened_at",
+                          selectedDate.toISOString().split("T")[0],
+                        );
+                      }
+                    }}
+                  />
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* ════════════ STAGE 4: الملاحظات والتأكيد ════════════ */}
+          {currentStep === 4 && (
+            <View>
+              <SectionHeader label="المرحلة الرابعة: الملاحظات ومراجعة التأكيد" />
+              <View style={styles.card}>
+                <FieldWrapper label="وصف وموضوع القضية" error={errors.description}>
+                  <TextInput
+                    placeholder="أدخل ملخص وموضوع القضية (اختياري)..."
+                    placeholderTextColor="#9ca3af"
+                    style={styles.notesInput}
+                    multiline
+                    numberOfLines={4}
+                    value={caseDetails.description ?? ""}
+                    onChangeText={(t) => handleChange("description", t)}
+                  />
+                </FieldWrapper>
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper label="آخر تحديث أو ملاحظات" error={errors.latest_update}>
+                  <TextInput
+                    placeholder="ملاحظات أو آخر مستجدات في القضية (اختياري)"
+                    placeholderTextColor="#9ca3af"
+                    style={styles.input}
+                    value={caseDetails.latest_update ?? ""}
+                    onChangeText={(t) => handleChange("latest_update", t)}
+                  />
+                </FieldWrapper>
+              </View>
+
+              {/* Review / Summary Card */}
+              <SectionHeader label="ملخص بيانات القضية قبل الحفظ" />
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryValue}>
+                    {caseDetails.case_number} لسنة {caseDetails.case_year}
+                  </Text>
+                  <Text style={styles.summaryLabel}>القضية:</Text>
+                </View>
+
+                {!!caseDetails.case_type && (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryValue}>{caseDetails.case_type}</Text>
+                    <Text style={styles.summaryLabel}>النوع:</Text>
+                  </View>
+                )}
+
+                <View style={styles.summaryDivider} />
+
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryValue}>
+                    {caseDetails.client_name} ({caseDetails.client_role || "مدعي"})
+                  </Text>
+                  <Text style={styles.summaryLabel}>الموكل:</Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryValue}>
+                    {caseDetails.client_opponent_name}
+                  </Text>
+                  <Text style={styles.summaryLabel}>الخصم:</Text>
+                </View>
+
+                {(!!caseDetails.court_name || !!caseDetails.court_circuit) && (
+                  <>
+                    <View style={styles.summaryDivider} />
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryValue}>
+                        {[caseDetails.court_name, caseDetails.court_circuit]
+                          .filter(Boolean)
+                          .join(" - ")}
+                      </Text>
+                      <Text style={styles.summaryLabel}>المحكمة:</Text>
+                    </View>
+                  </>
+                )}
+
+                {!!caseDetails.next_court_session_date && (
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryValue, { color: "#2563eb", fontWeight: "700" }]}>
+                      {caseDetails.next_court_session_date}
+                    </Text>
+                    <Text style={styles.summaryLabel}>الجلسة القادمة:</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* ════════════ Bottom Wizard Navigation Bar ════════════ */}
+          <View style={styles.wizardNavigationRow}>
+            {currentStep < 4 ? (
+              <TouchableOpacity
+                style={styles.wizardNextBtn}
+                onPress={handleNextStep}
+                activeOpacity={0.8}
               >
-                <Feather name="calendar" size={16} color="#6b7280" />
-                <Text
-                  style={[
-                    styles.dateBtnText,
-                    caseDetails.latest_court_session_date && styles.dateBtnFilled,
-                  ]}
-                >
-                  {caseDetails.latest_court_session_date || "اختر التاريخ"}
-                </Text>
-              </Pressable>
-              {caseDetails.latest_court_session_date ? (
-                <TouchableOpacity
-                  style={styles.clearDateBtn}
-                  onPress={() => handleChange("latest_court_session_date", "")}
-                >
-                  <Feather name="x" size={16} color="#ef4444" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </FieldWrapper>
-
-          {showLatest && (
-            <DateTimePicker
-              value={
-                caseDetails.latest_court_session_date
-                  ? new Date(caseDetails.latest_court_session_date)
-                  : latestDate
-              }
-              maximumDate={new Date()}
-              mode="date"
-              is24Hour
-              onChange={(_, selectedDate) => {
-                setShowLatest(false);
-                if (selectedDate) {
-                  setLatestDate(selectedDate);
-                  handleChange(
-                    "latest_court_session_date",
-                    selectedDate.toISOString().split("T")[0],
-                  );
-                }
-              }}
-            />
-          )}
-
-          <View style={styles.inCardDivider} />
-
-          <FieldWrapper
-            label="تاريخ الجلسة القادمة (اختياري)"
-            error={errors.next_court_session_date}
-          >
-            <View style={styles.datePickerContainer}>
-              <Pressable style={styles.dateBtn} onPress={() => setShowNext(true)}>
-                <Feather name="calendar" size={16} color="#2563eb" />
-                <Text
-                  style={[
-                    styles.dateBtnText,
-                    caseDetails.next_court_session_date && styles.dateBtnFilled,
-                    caseDetails.next_court_session_date
-                      ? { color: "#2563eb" }
-                      : null,
-                  ]}
-                >
-                  {caseDetails.next_court_session_date || "اختر التاريخ"}
-                </Text>
-              </Pressable>
-              {caseDetails.next_court_session_date ? (
-                <TouchableOpacity
-                  style={styles.clearDateBtn}
-                  onPress={() => handleChange("next_court_session_date", "")}
-                >
-                  <Feather name="x" size={16} color="#ef4444" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </FieldWrapper>
-
-          {showNext && (
-            <DateTimePicker
-              value={
-                caseDetails.next_court_session_date
-                  ? new Date(caseDetails.next_court_session_date)
-                  : nextDate
-              }
-              mode="date"
-              is24Hour
-              onChange={(_, selectedDate) => {
-                setShowNext(false);
-                if (selectedDate) {
-                  setNextDate(selectedDate);
-                  handleChange(
-                    "next_court_session_date",
-                    selectedDate.toISOString().split("T")[0],
-                  );
-                }
-              }}
-            />
-          )}
-
-          <View style={styles.inCardDivider} />
-
-          <FieldWrapper
-            label="تاريخ فتح القضية (اختياري)"
-            error={errors.opened_at}
-          >
-            <View style={styles.datePickerContainer}>
-              <Pressable
-                style={styles.dateBtn}
-                onPress={() => setShowOpened(true)}
+                <Feather name="arrow-left" size={18} color="#ffffff" />
+                <Text style={styles.wizardNextBtnText}>التالي</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.wizardSubmitBtn}
+                onPress={handleSubmit}
+                activeOpacity={0.8}
               >
-                <Feather name="calendar" size={16} color="#6b7280" />
-                <Text
-                  style={[
-                    styles.dateBtnText,
-                    caseDetails.opened_at && styles.dateBtnFilled,
-                  ]}
-                >
-                  {caseDetails.opened_at || "اختر التاريخ"}
+                <Feather name="check" size={18} color="#ffffff" />
+                <Text style={styles.wizardSubmitBtnText}>{submitLabel}</Text>
+              </TouchableOpacity>
+            )}
+
+            {currentStep > 1 ? (
+              <TouchableOpacity
+                style={styles.wizardPrevBtn}
+                onPress={handlePrevStep}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.wizardPrevBtnText}>السابق</Text>
+                <Feather name="arrow-right" size={18} color="#0e2038" />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 90 }} />
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+    {/* ── Client Picker Modal ── */}
+    <Modal
+      visible={showClientPickerModal}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setShowClientPickerModal(false)}
+      statusBarTranslucent
+    >
+      <KeyboardAvoidingView
+        style={styles.clientPickerOverlay}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => setShowClientPickerModal(false)}
+        />
+        <View style={styles.clientPickerSheet}>
+          {/* Header */}
+          <View style={styles.pickerHeader}>
+            <TouchableOpacity
+              onPress={() => setShowClientPickerModal(false)}
+              style={styles.pickerCloseBtn}
+            >
+              <Feather name="x" size={20} color="#6b7280" />
+            </TouchableOpacity>
+            <Text style={styles.casePickerTitle}>اختيار موكل مسجل</Text>
+            <TouchableOpacity
+              onPress={handleOpenAddClient}
+              style={styles.pickerAddClientBtn}
+              activeOpacity={0.8}
+            >
+              <Feather name="user-plus" size={15} color="#b8975a" />
+              <Text style={styles.pickerAddClientBtnText}>إضافة موكل</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Box */}
+          <View style={styles.searchBoxWrapper}>
+            <TextInput
+              placeholder="ابحث بالاسم، الهاتف أو الرقم القومي..."
+              placeholderTextColor="#94a3b8"
+              value={clientSearchQuery}
+              onChangeText={setClientSearchQuery}
+              style={styles.searchBoxInput}
+              textAlign="right"
+            />
+            <Feather name="search" size={16} color="#94a3b8" />
+            {clientSearchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setClientSearchQuery("")}>
+                <Feather name="x-circle" size={16} color="#94a3b8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Clients List */}
+          <ScrollView
+            contentContainerStyle={styles.clientListContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {loadingClients ? (
+              <View style={styles.emptyListWrapper}>
+                <ActivityIndicator size="small" color="#0e2038" />
+                <Text style={styles.emptyListText}>جاري تحميل الموكلين...</Text>
+              </View>
+            ) : filteredClients.length === 0 ? (
+              <View style={styles.emptyListWrapper}>
+                <Feather name="user-x" size={36} color="#cbd5e1" />
+                <Text style={styles.emptyListText}>
+                  {clientSearchQuery.trim()
+                    ? "لا توجد نتائج تطابق بحثك"
+                    : "لا يوجد موكلين مسجلين في هذا المكتب"}
                 </Text>
-              </Pressable>
-              {caseDetails.opened_at ? (
-                <TouchableOpacity
-                  style={styles.clearDateBtn}
-                  onPress={() => handleChange("opened_at", "")}
-                >
-                  <Feather name="x" size={16} color="#ef4444" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </FieldWrapper>
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+                  <TouchableOpacity
+                    onPress={handleOpenAddClient}
+                    style={styles.emptyListAddBtn}
+                  >
+                    <Feather name="user-plus" size={14} color="#0e2038" />
+                    <Text style={styles.emptyListAddBtnText}>
+                      إضافة موكل جديد
+                    </Text>
+                  </TouchableOpacity>
 
-          {showOpened && (
-            <DateTimePicker
-              value={
-                caseDetails.opened_at
-                  ? new Date(caseDetails.opened_at)
-                  : openedDate
-              }
-              mode="date"
-              is24Hour
-              onChange={(_, selectedDate) => {
-                setShowOpened(false);
-                if (selectedDate) {
-                  setOpenedDate(selectedDate);
-                  handleChange(
-                    "opened_at",
-                    selectedDate.toISOString().split("T")[0],
-                  );
-                }
-              }}
-            />
-          )}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowClientPickerModal(false);
+                      handleClientModeChange("manual");
+                    }}
+                    style={styles.emptyListSwitchBtn}
+                  >
+                    <Text style={styles.emptyListSwitchBtnText}>
+                      التحويل للإدخال اليدوي
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              filteredClients.map((c) => {
+                const isSelected = caseDetails.client_name === c.name;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    activeOpacity={0.7}
+                    onPress={() => handleSelectClient(c)}
+                    style={[
+                      styles.clientListItem,
+                      isSelected && styles.clientListItemSelected,
+                    ]}
+                  >
+                    <View style={styles.clientItemLeft}>
+                      {isSelected ? (
+                        <View style={styles.checkCircle}>
+                          <Feather name="check" size={13} color="#ffffff" />
+                        </View>
+                      ) : (
+                        <Feather name="chevron-left" size={16} color="#94a3b8" />
+                      )}
+                    </View>
+
+                    <View style={styles.clientItemRight}>
+                      <Text
+                        style={[
+                          styles.clientItemName,
+                          isSelected && styles.clientItemNameSelected,
+                        ]}
+                      >
+                        {c.name}
+                      </Text>
+                      <View style={styles.clientItemSubRow}>
+                        {!!c.client_type && (
+                          <View style={styles.clientItemBadge}>
+                            <Text style={styles.clientItemBadgeText}>
+                              {c.client_type}
+                            </Text>
+                          </View>
+                        )}
+                        {!!c.phone_number && (
+                          <Text style={styles.clientItemMeta}>
+                            {c.phone_number}
+                          </Text>
+                        )}
+                        {!!c.national_id && (
+                          <Text style={styles.clientItemMeta}>
+                            الرقم القومي: {c.national_id}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </ScrollView>
         </View>
+      </KeyboardAvoidingView>
+    </Modal>
 
-        {/* ── description & notes ── */}
-        <SectionHeader label="الوصف والملاحظات" />
-        <View style={styles.card}>
-          <FieldWrapper label="وصف القضية" error={errors.description}>
-            <TextInput
-              placeholder="أدخل ملخص وموضوع القضية (اختياري)..."
-              placeholderTextColor="#9ca3af"
-              style={styles.notesInput}
-              multiline
-              numberOfLines={4}
-              value={caseDetails.description ?? ""}
-              onChangeText={(t) => handleChange("description", t)}
-            />
-          </FieldWrapper>
-
-          <View style={styles.inCardDivider} />
-
-          <FieldWrapper label="آخر تحديث" error={errors.latest_update}>
-            <TextInput
-              placeholder="ملاحظات أو آخر مستجدات في القضية (اختياري)"
-              placeholderTextColor="#9ca3af"
-              style={styles.input}
-              value={caseDetails.latest_update ?? ""}
-              onChangeText={(t) => handleChange("latest_update", t)}
-            />
-          </FieldWrapper>
-        </View>
-
-        {/* ── submit ── */}
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-          <Text style={styles.submitBtnText}>{submitLabel}</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    {/* ── Add New Client Modal (Extracted & Reusable) ── */}
+    <ClientModalForm
+      visible={showAddClientModal}
+      officeId={currentOffice?.id}
+      onClose={() => setShowAddClientModal(false)}
+      onSuccess={handleClientCreatedSuccessfully}
+    />
   </View>
   );
 }
@@ -786,6 +1501,283 @@ const styles = StyleSheet.create({
     color: "#0e2038",
     fontWeight: "700",
   },
+  pickerButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  pickerPlaceholderText: {
+    color: "#9ca3af",
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "right",
+  },
+  inputErrorBorder: {
+    borderColor: "#ef4444",
+  },
+
+  // client mode toggle
+  clientModeToggle: {
+    flexDirection: "row",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 10,
+    padding: 4,
+    marginVertical: 8,
+    gap: 6,
+  },
+  clientModeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  clientModeBtnActive: {
+    backgroundColor: "#0e2038",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  clientModeText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
+  },
+  clientModeTextActive: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+
+  // selected client card
+  selectedClientCard: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    padding: 14,
+    marginVertical: 6,
+    gap: 8,
+  },
+  selectedClientHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  selectedClientBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ecfdf5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  selectedClientBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  changeClientBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e2e8f0",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    gap: 4,
+  },
+  changeClientBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0e2038",
+  },
+  clearClientBtn: {
+    backgroundColor: "#fee2e2",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  selectedClientName: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0e2038",
+    textAlign: "right",
+  },
+  selectedClientMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "flex-end",
+  },
+  metaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    gap: 4,
+  },
+  metaPillText: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "500",
+  },
+
+  // client picker modal
+  clientPickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(14,32,56,0.55)",
+    justifyContent: "flex-end",
+  },
+  clientPickerSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "85%",
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  searchBoxWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  searchBoxInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#0e2038",
+    padding: 0,
+  },
+  clientListContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  clientListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#f8fafc",
+    borderColor: "#e2e8f0",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  clientListItemSelected: {
+    backgroundColor: "#eff6ff",
+    borderColor: "#2563eb",
+  },
+  clientItemLeft: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#2563eb",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  clientItemRight: {
+    flex: 1,
+    alignItems: "flex-end",
+    paddingLeft: 12,
+  },
+  clientItemName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0e2038",
+    marginBottom: 4,
+    textAlign: "right",
+  },
+  clientItemNameSelected: {
+    color: "#2563eb",
+  },
+  clientItemSubRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 6,
+    justifyContent: "flex-end",
+  },
+  clientItemBadge: {
+    backgroundColor: "#f1f5f9",
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  clientItemBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  clientItemMeta: {
+    fontSize: 12,
+    color: "#64748b",
+  },
+  emptyListWrapper: {
+    alignItems: "center",
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyListText: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+  },
+  emptyListAddBtn: {
+    backgroundColor: "#fdf8ef",
+    borderColor: "#e5d1a8",
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  emptyListAddBtnText: {
+    color: "#0e2038",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  emptyListSwitchBtn: {
+    backgroundColor: "#0e2038",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  emptyListSwitchBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
   // client type popup
   casePickerOverlay: {
@@ -863,5 +1855,221 @@ const styles = StyleSheet.create({
   casePickerItemTextActive: {
     color: "#0e2038",
     fontWeight: "700",
+  },
+
+  // quick add client in picker
+  pickerAddClientBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fdf8ef",
+    borderWidth: 1,
+    borderColor: "#e5d1a8",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 5,
+  },
+  pickerAddClientBtnText: {
+    color: "#b8975a",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  // ─── Stepper Wizard Styles (Matching ForgotPasswordModal) ───
+  stepperContainer: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  stepItemWrapper: {
+    flex: 1,
+    alignItems: "center",
+  },
+  stepDotRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    width: "100%",
+    justifyContent: "center",
+    position: "relative",
+  },
+  stepLine: {
+    position: "absolute",
+    left: "-50%",
+    right: "50%",
+    top: 13,
+    height: 3,
+    backgroundColor: "#e2e8f0",
+    zIndex: 1,
+    borderRadius: 2,
+  },
+  stepLineActive: {
+    backgroundColor: "#b8975a",
+  },
+  stepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#f1f5f9",
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  stepDotActive: {
+    backgroundColor: "#b8975a",
+    borderColor: "#b8975a",
+    shadowColor: "#b8975a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  stepDotPassed: {
+    backgroundColor: "#0d1b2a",
+    borderColor: "#0d1b2a",
+  },
+  stepDotText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748b",
+  },
+  stepDotTextActive: {
+    color: "#ffffff",
+  },
+  stepLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94a3b8",
+    textAlign: "center",
+    marginTop: 6,
+    lineHeight: 14,
+  },
+  stepLabelActive: {
+    color: "#0e2038",
+    fontWeight: "800",
+  },
+  stepLabelPassed: {
+    color: "#0d1b2a",
+    fontWeight: "700",
+  },
+
+  // ─── Summary Card in Stage 4 ───
+  summaryCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    padding: 16,
+    marginBottom: 16,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
+    textAlign: "right",
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0e2038",
+    textAlign: "left",
+    flex: 1,
+    paddingRight: 10,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: "#f1f5f9",
+    marginVertical: 4,
+  },
+
+  // ─── Wizard Navigation Bottom Bar ───
+  wizardNavigationRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+    marginBottom: 24,
+    gap: 12,
+  },
+  wizardNextBtn: {
+    flex: 1,
+    backgroundColor: "#0e2038",
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#0e2038",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  wizardNextBtnText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  wizardPrevBtn: {
+    backgroundColor: "#f1f5f9",
+    borderColor: "#cbd5e1",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  wizardPrevBtnText: {
+    color: "#0e2038",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  wizardSubmitBtn: {
+    flex: 1,
+    backgroundColor: "#b8975a",
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#b8975a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  wizardSubmitBtnText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "800",
   },
 });
