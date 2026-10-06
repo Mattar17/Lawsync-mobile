@@ -12,7 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { CLIENT_TYPES, CaseT } from "../types";
+import { CaseT } from "../types";
 import { caseSchema } from "../validation/caseSchema";
 
 export const EMPTY_CASE: CaseT = {
@@ -23,7 +23,7 @@ export const EMPTY_CASE: CaseT = {
   client_national_id: "",
   client_opponent_national_id: "",
   client_role: "مدعي",
-  client_type: "فرد",
+  client_type: "",
   case_type: "",
   case_degree: "",
   court_name: "",
@@ -128,7 +128,6 @@ export default function CaseForm({
   const [showLatest, setShowLatest] = useState(false);
   const [showNext, setShowNext] = useState(false);
   const [showOpened, setShowOpened] = useState(false);
-  const [showClientTypePicker, setShowClientTypePicker] = useState(false);
 
   const handleChange = (key: keyof CaseT, value: string) => {
     setCaseDetails((prev) => ({ ...prev, [key]: value }));
@@ -149,7 +148,7 @@ export default function CaseForm({
       assigned_lawyer_id: caseDetails.assigned_lawyer_id?.trim() || null,
       case_degree: caseDetails.case_degree?.trim() || null,
       case_type: caseDetails.case_type?.trim() || null,
-      client_type: caseDetails.client_type || null,
+      client_type: caseDetails.client_type?.trim() || null,
       closed_at: caseDetails.closed_at || null,
       court_circuit: caseDetails.court_circuit?.trim() || null,
       court_name: caseDetails.court_name?.trim() || null,
@@ -307,28 +306,13 @@ export default function CaseForm({
           <View style={styles.inCardDivider} />
 
           <FieldWrapper label="نوع الموكل" error={errors.client_type}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setShowClientTypePicker(true)}
-              style={[
-                styles.pickerButton,
-                !!caseDetails.client_type && styles.pickerButtonActive,
-              ]}
-            >
-              <Feather
-                name="chevron-down"
-                size={18}
-                color={caseDetails.client_type ? "#b8975a" : "#6b7280"}
-              />
-              <Text
-                style={[
-                  styles.pickerButtonText,
-                  !!caseDetails.client_type && styles.pickerButtonTextActive,
-                ]}
-              >
-                {caseDetails.client_type || "اختر نوع الموكل"}
-              </Text>
-            </TouchableOpacity>
+            <TextInput
+              placeholder="مثال: فرد، شركة مساهمة، جهة حكومية..."
+              placeholderTextColor="#9ca3af"
+              style={styles.input}
+              value={caseDetails.client_type ?? ""}
+              onChangeText={(t) => handleChange("client_type", t)}
+            />
           </FieldWrapper>
         </View>
 
@@ -588,89 +572,6 @@ export default function CaseForm({
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
-
-    {showClientTypePicker ? (
-      <View style={styles.casePickerOverlay}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={() => setShowClientTypePicker(false)}
-        />
-        <View style={styles.casePickerSheet}>
-          <View style={styles.pickerHeader}>
-            <TouchableOpacity
-              onPress={() => setShowClientTypePicker(false)}
-              style={styles.pickerCloseBtn}
-            >
-              <Feather name="x" size={20} color="#6b7280" />
-            </TouchableOpacity>
-            <Text style={styles.casePickerTitle}>اختر نوع الموكل</Text>
-          </View>
-
-          <ScrollView
-            contentContainerStyle={styles.casePickerContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                handleChange("client_type", "");
-                setShowClientTypePicker(false);
-              }}
-              style={[
-                styles.casePickerItem,
-                !caseDetails.client_type && styles.casePickerItemActive,
-              ]}
-            >
-              {!caseDetails.client_type ? (
-                <Feather name="check" size={16} color="#0e2038" />
-              ) : (
-                <View style={{ width: 16 }} />
-              )}
-              <Text
-                style={[
-                  styles.casePickerItemText,
-                  !caseDetails.client_type && styles.casePickerItemTextActive,
-                ]}
-              >
-                بدون تحديد
-              </Text>
-            </TouchableOpacity>
-
-            {CLIENT_TYPES.map((type) => {
-              const isSelected = caseDetails.client_type === type;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    handleChange("client_type", type);
-                    setShowClientTypePicker(false);
-                  }}
-                  style={[
-                    styles.casePickerItem,
-                    isSelected && styles.casePickerItemActive,
-                  ]}
-                >
-                  {isSelected ? (
-                    <Feather name="check" size={16} color="#0e2038" />
-                  ) : (
-                    <View style={{ width: 16 }} />
-                  )}
-                  <Text
-                    style={[
-                      styles.casePickerItemText,
-                      isSelected && styles.casePickerItemTextActive,
-                    ]}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </View>
-    ) : null}
   </View>
   );
 }

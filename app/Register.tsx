@@ -5,6 +5,7 @@ import {
     ActivityIndicator,
     Animated,
     Image,
+    Keyboard,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -12,6 +13,7 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
@@ -157,11 +159,27 @@ const Register = ({ navigation }: Props) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success";
   } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const showToast = (message: string, type: "error" | "success" = "error") => {
     setToast({ message, type });
@@ -214,31 +232,51 @@ const Register = ({ navigation }: Props) => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={styles.screen}
+        contentContainerStyle={[
+          styles.screen,
+          keyboardVisible && styles.screenKeyboard,
+        ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        {toast && <Toast message={toast.message} type={toast.type} />}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.innerWrapper}>
+            {toast && <Toast message={toast.message} type={toast.type} />}
 
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require("@/assets/images/meezan-logo.jpg")}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.title}>إنشاء حساب جديد</Text>
-            <Text style={styles.subtitle}>
-              أدخل بياناتك للبدء في استخدام المنصة
-            </Text>
-          </View>
+            <View style={styles.container}>
+              {/* Header */}
+              <View style={[styles.header, keyboardVisible && styles.headerKeyboard]}>
+                <View
+                  style={[
+                    styles.logoContainer,
+                    keyboardVisible && styles.logoContainerKeyboard,
+                  ]}
+                >
+                  <Image
+                    source={require("@/assets/images/meezan-logo.jpg")}
+                    style={[
+                      styles.logoImage,
+                      keyboardVisible && styles.logoImageKeyboard,
+                    ]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={[styles.title, keyboardVisible && styles.titleKeyboard]}>
+                  إنشاء حساب جديد
+                </Text>
+                {!keyboardVisible && (
+                  <Text style={styles.subtitle}>
+                    أدخل بياناتك للبدء في استخدام المنصة
+                  </Text>
+                )}
+              </View>
 
-          {/* Card */}
-          <View style={styles.card}>
-            {/* Full name */}
-            <View style={styles.field}>
+              {/* Card */}
+              <View style={[styles.card, keyboardVisible && styles.cardKeyboard]}>
+                {/* Full name */}
+                <View style={[styles.field, keyboardVisible && styles.fieldKeyboard]}>
               <Text style={styles.label}>الاسم الكامل</Text>
               <View style={styles.inputRow}>
                 <View style={styles.inputIcon}>
@@ -257,7 +295,7 @@ const Register = ({ navigation }: Props) => {
             </View>
 
             {/* Email */}
-            <View style={styles.field}>
+            <View style={[styles.field, keyboardVisible && styles.fieldKeyboard]}>
               <Text style={styles.label}>البريد الإلكتروني</Text>
               <View style={styles.inputRow}>
                 <View style={styles.inputIcon}>
@@ -278,7 +316,7 @@ const Register = ({ navigation }: Props) => {
             </View>
 
             {/* Phone */}
-            <View style={styles.field}>
+            <View style={[styles.field, keyboardVisible && styles.fieldKeyboard]}>
               <Text style={styles.label}>
                 رقم الهاتف <Text style={styles.optional}>(اختياري)</Text>
               </Text>
@@ -300,7 +338,7 @@ const Register = ({ navigation }: Props) => {
             </View>
 
             {/* Password */}
-            <View style={styles.field}>
+            <View style={[styles.field, keyboardVisible && styles.fieldKeyboard]}>
               <Text style={styles.label}>كلمة المرور</Text>
               <View style={styles.inputRow}>
                 <View style={styles.inputIcon}>
@@ -338,7 +376,7 @@ const Register = ({ navigation }: Props) => {
             </View>
 
             {/* Confirm password */}
-            <View style={styles.field}>
+            <View style={[styles.field, keyboardVisible && styles.fieldKeyboard]}>
               <Text style={styles.label}>تأكيد كلمة المرور</Text>
               <View style={styles.inputRow}>
                 <View style={styles.inputIcon}>
@@ -396,6 +434,8 @@ const Register = ({ navigation }: Props) => {
             </TouchableOpacity>
           </View>
         </View>
+          </View>
+        </TouchableWithoutFeedback>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -410,6 +450,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 40,
     paddingHorizontal: 20,
+  },
+  screenKeyboard: {
+    justifyContent: "flex-start",
+    paddingTop: Platform.OS === "ios" ? 16 : 12,
+    paddingBottom: Platform.OS === "ios" ? 50 : 130,
+  },
+  innerWrapper: {
+    width: "100%",
+    alignItems: "center",
   },
   container: { width: "100%", maxWidth: 380, alignSelf: "center" },
   toast: {
@@ -428,17 +477,24 @@ const styles = StyleSheet.create({
   },
   toastText: { color: "#fff", fontSize: 13, fontWeight: "500" },
   header: { alignItems: "center", marginBottom: 28 },
+  headerKeyboard: { marginBottom: 10 },
   logoContainer: {
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
+  logoContainerKeyboard: { marginBottom: 4 },
   logoImage: {
     width: 220,
     height: 120,
     borderRadius: 12,
   },
+  logoImageKeyboard: {
+    width: 120,
+    height: 50,
+  },
   title: { fontSize: 24, fontWeight: "800", color: "#0d1b2a" },
+  titleKeyboard: { fontSize: 20 },
   subtitle: {
     fontSize: 13.5,
     color: "#64748b",
@@ -457,7 +513,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
+  cardKeyboard: {
+    padding: 16,
+  },
   field: { marginBottom: 16 },
+  fieldKeyboard: { marginBottom: 10 },
   label: {
     fontSize: 13,
     fontWeight: "700",

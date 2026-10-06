@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Alert } from "react-native";
 import { createCase, CreateCaseInput } from "./api/cases";
 import CaseForm from "./components/CaseForm";
-import { CaseT, ClientType } from "./types";
+import { CaseT } from "./types";
 import { useUserStore } from "./zustandStore/userStore";
 
 export default function CreateCase() {
@@ -26,7 +26,7 @@ export default function CreateCase() {
         ...(data.assigned_lawyer_id ? { assigned_lawyer_id: data.assigned_lawyer_id } : {}),
         ...(data.case_degree ? { case_degree: data.case_degree.trim() } : {}),
         ...(data.case_type ? { case_type: data.case_type.trim() } : {}),
-        ...(data.client_type ? { client_type: data.client_type as ClientType } : {}),
+        ...(data.client_type ? { client_type: data.client_type.trim() } : {}),
         ...(data.court_circuit ? { court_circuit: data.court_circuit.trim() } : {}),
         ...(data.court_name ? { court_name: data.court_name.trim() } : {}),
         ...(data.description ? { description: data.description.trim() } : {}),

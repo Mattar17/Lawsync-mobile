@@ -1,4 +1,4 @@
-import { CaseT, ClientType } from "../types";
+import { CaseT } from "../types";
 import { request } from "./client";
 
 export type CreateCaseInput = {
@@ -13,7 +13,7 @@ export type CreateCaseInput = {
   assigned_lawyer_id?: string | null;
   case_degree?: string | null;
   case_type?: string | null;
-  client_type?: ClientType | null;
+  client_type?: string | null;
   closed_at?: string | null;
   court_circuit?: string | null;
   court_name?: string | null;

@@ -5,9 +5,9 @@
       "android": {
         "buildType": "apk"
       },
-      "env":{
-        "EXPO_PUBLIC_API_URL" : "https://law-sync-activation-api-git-preview-mattar17s-projects.vercel.app/",
-        "EXPO_PUBLIC_API_KEY" : "00043cfe7d9b38d97ce32f7bfa80ebdcdaa969ad848d1dc74224dd3abe7aea50"
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://law-sync-activation-api-git-preview-mattar17s-projects.vercel.app/",
+        "EXPO_PUBLIC_API_KEY": "00043cfe7d9b38d97ce32f7bfa80ebdcdaa969ad848d1dc74224dd3abe7aea50"
       }
     }
   }

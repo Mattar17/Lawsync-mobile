@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,10 +15,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { login } from "./api/auth";
+import { ForgotPasswordModal } from "./components/ForgotPasswordModal";
 import { authStorage } from "./utils/authStorage";
 import { useUserStore } from "./zustandStore/userStore";
 
@@ -93,7 +96,13 @@ const EyeIcon = ({ open }: { open: boolean }) =>
 
 
 
-const Toast = ({ message }: { message: string }) => {
+const Toast = ({
+  message,
+  type = "error",
+}: {
+  message: string;
+  type?: "error" | "success";
+}) => {
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(opacity, {
@@ -103,7 +112,13 @@ const Toast = ({ message }: { message: string }) => {
     }).start();
   }, []);
   return (
-    <Animated.View style={[styles.toast, { opacity }]}>
+    <Animated.View
+      style={[
+        styles.toast,
+        type === "success" && { backgroundColor: "#10B981" },
+        { opacity },
+      ]}
+    >
       <Text style={styles.toastText}>{message}</Text>
     </Animated.View>
   );
@@ -113,9 +128,29 @@ const Login = ({ navigation }: Props) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type?: "error" | "success";
+  } | null>(null);
+  const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     SecureStore.getItemAsync("savedEmail").then((savedEmail) => {
@@ -126,9 +161,9 @@ const Login = ({ navigation }: Props) => {
     });
   }, []);
 
-  const showToast = (message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
+  const showToast = (message: string, type: "error" | "success" = "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
   };
 
   const handleSubmit = async () => {
@@ -162,28 +197,50 @@ const Login = ({ navigation }: Props) => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={styles.screen}
+        contentContainerStyle={[
+          styles.screen,
+          keyboardVisible && styles.screenKeyboard,
+        ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        {toast && <Toast message={toast} />}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.innerWrapper}>
+            {toast && <Toast message={toast.message} type={toast.type} />}
 
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require("@/assets/images/meezan-logo.jpg")}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.title}>مرحباً بعودتك</Text>
-            <Text style={styles.subtitle}>سجّل دخولك للمتابعة إلى حسابك</Text>
-          </View>
+            <View style={styles.container}>
+              {/* Header */}
+              <View style={[styles.header, keyboardVisible && styles.headerKeyboard]}>
+                <View
+                  style={[
+                    styles.logoContainer,
+                    keyboardVisible && styles.logoContainerKeyboard,
+                  ]}
+                >
+                  <Image
+                    source={require("@/assets/images/meezan-logo.jpg")}
+                    style={[
+                      styles.logoImage,
+                      keyboardVisible && styles.logoImageKeyboard,
+                    ]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={[styles.title, keyboardVisible && styles.titleKeyboard]}>
+                  مرحباً بعودتك
+                </Text>
+                {!keyboardVisible && (
+                  <Text style={styles.subtitle}>
+                    سجّل دخولك للمتابعة إلى حسابك
+                  </Text>
+                )}
+              </View>
 
-          {/* Card */}
-          <View style={styles.card}>
-            {/* Email */}
+              {/* Card */}
+              <View style={[styles.card, keyboardVisible && styles.cardKeyboard]}>
+                {/* Email */}
             <View style={styles.field}>
               <Text style={styles.label}>البريد الإلكتروني</Text>
               <View style={styles.inputRow}>
@@ -244,7 +301,10 @@ const Login = ({ navigation }: Props) => {
                 </View>
                 <Text style={styles.rememberText}>تذكرني</Text>
               </TouchableOpacity>
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setForgotModalVisible(true)}
+                disabled={loading}
+              >
                 <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
               </TouchableOpacity>
             </View>
@@ -275,7 +335,20 @@ const Login = ({ navigation }: Props) => {
             </TouchableOpacity>
           </View>
         </View>
+          </View>
+        </TouchableWithoutFeedback>
       </ScrollView>
+
+      <ForgotPasswordModal
+        visible={forgotModalVisible}
+        onClose={() => setForgotModalVisible(false)}
+        initialEmail={email}
+        onSuccess={(resetEmail, msg) => {
+          setEmail(resetEmail);
+          setPassword("");
+          showToast(msg, "success");
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -289,6 +362,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 40,
     paddingHorizontal: 20,
+  },
+  screenKeyboard: {
+    justifyContent: "flex-start",
+    paddingTop: Platform.OS === "ios" ? 20 : 16,
+    paddingBottom: Platform.OS === "ios" ? 40 : 120,
+  },
+  innerWrapper: {
+    width: "100%",
+    alignItems: "center",
   },
   container: {
     width: "100%",
@@ -312,17 +394,24 @@ const styles = StyleSheet.create({
   },
   toastText: { color: "#fff", fontSize: 13, fontWeight: "500" },
   header: { alignItems: "center", marginBottom: 28 },
+  headerKeyboard: { marginBottom: 12 },
   logoContainer: {
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
+  logoContainerKeyboard: { marginBottom: 6 },
   logoImage: {
     width: 220,
     height: 120,
     borderRadius: 12,
   },
+  logoImageKeyboard: {
+    width: 130,
+    height: 55,
+  },
   title: { fontSize: 24, fontWeight: "800", color: "#0d1b2a" },
+  titleKeyboard: { fontSize: 20 },
   subtitle: {
     fontSize: 13.5,
     color: "#64748b",
@@ -340,6 +429,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
+  },
+  cardKeyboard: {
+    padding: 18,
   },
   field: { marginBottom: 16 },
   label: {

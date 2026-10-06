@@ -55,7 +55,7 @@ type CaseT = {
 
   case_type?: string | null;
   case_degree?: string | null;
-  client_type?: ClientType | string | null;
+  client_type?: string | null;
 
   assigned_lawyer_id?: string | null;
   closed_at?: string | null;

@@ -27,7 +27,7 @@ export const createCaseSchema = z.object({
   client_role: z.string().optional().nullable().or(z.literal("")),
   case_type: z.string().optional().nullable().or(z.literal("")),
   case_degree: z.string().optional().nullable().or(z.literal("")),
-  client_type: z.enum(clientTypeValues).optional().nullable(),
+  client_type: z.string().optional().nullable().or(z.literal("")),
   assigned_lawyer_id: z.string().uuid("معرف المحامي غير صالح").optional().nullable(),
   closed_at: z.string().optional().nullable(),
   court_circuit: z.string().optional().nullable(),

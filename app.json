@@ -18,8 +18,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.anonymous.Lawsyncmobile",
       "permissions": [
+        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -56,6 +58,18 @@
       "eas": {
         "projectId": "38bff67c-7367-4341-9a31-36060cf04084"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/38bff67c-7367-4341-9a31-36060cf04084"
     }
+  },
+  "updates": {
+    "url": "https://u.expo.dev/38bff67c-7367-4341-9a31-36060cf04084"
+  },
+  "runtimeVersion": {
+    "policy": "appVersion"
   }
 }

@@ -62,7 +62,7 @@ type ClientFormData = {
 
 const initialFormData: ClientFormData = {
   name: "",
-  client_type: "فرد",
+  client_type: "",
   file_number: "",
   phone_number: "",
   national_id: "",
@@ -675,26 +675,18 @@ export default function Clients() {
                   <Text style={styles.errorText}>{formErrors.name}</Text>
                 ) : null}
 
-                {/* Client Type Chips */}
+                {/* Client Type */}
                 <Text style={styles.inputLabel}>نوع الموكل</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-                  <View style={styles.chipsRow}>
-                    {CLIENT_TYPE_OPTIONS.map((type) => {
-                      const active = form.client_type === type;
-                      return (
-                        <TouchableOpacity
-                          key={type}
-                          style={[styles.typeChip, active && styles.typeChipActive]}
-                          onPress={() => setForm((prev) => ({ ...prev, client_type: type }))}
-                        >
-                          <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                            {type}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="مثال: فرد، شركة مساهمة، جهة حكومية..."
+                  placeholderTextColor="#94a3b8"
+                  value={form.client_type}
+                  onChangeText={(text) =>
+                    setForm((prev) => ({ ...prev, client_type: text }))
+                  }
+                  textAlign="right"
+                />
 
                 {/* Phone Number */}
                 <Text style={styles.inputLabel}>رقم الهاتف (11 رقماً)</Text>
