@@ -90,15 +90,15 @@ export default function Dashboard() {
     },
     {
       id: "clients",
-      title: "العملاء",
-      subtitle: "دليل العملاء",
+      title: "الموكلين",
+      subtitle: "دليل الموكلين",
       icon: "users" as const,
       color: "#FB7185",
       route: "/workspace/Clients",
     },
     {
       id: "tasks",
-      title: "الأعمال",
+      title: "الأعمال الإدارية",
       subtitle: `${tasks.length} مهام`,
       icon: "check-square" as const,
       color: "#F59E0B",
@@ -156,7 +156,12 @@ export default function Dashboard() {
                   <Feather name={item.icon} size={20} color="#ffffff" />
                 </View>
                 <View style={styles.quickCardBottom}>
-                  <Text style={styles.quickCardTitle} numberOfLines={1}>
+                  <Text
+                    style={styles.quickCardTitle}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
                     {item.title}
                   </Text>
                   <Text style={styles.quickCardSubtitle} numberOfLines={1}>
@@ -801,7 +806,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 12,
     paddingHorizontal: 4,
-    height: 110,
+    minHeight: 124,
     justifyContent: "space-between",
     alignItems: "center",
     shadowColor: "#0d1b2a",
@@ -826,12 +831,16 @@ const styles = StyleSheet.create({
   quickCardBottom: {
     width: "100%",
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 46,
+    paddingHorizontal: 2,
   },
   quickCardTitle: {
     color: "#0d1b2a",
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "800",
     textAlign: "center",
+    lineHeight: 16,
   },
   quickCardSubtitle: {
     color: "#64748b",

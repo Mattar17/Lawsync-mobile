@@ -2,22 +2,21 @@ import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import {
-    getOfficeClients,
-    type Client,
+  getOfficeClients,
+  type Client,
 } from "../api/clients";
 import { CaseT } from "../types";
 import { caseSchema } from "../validation/caseSchema";
@@ -31,10 +30,14 @@ export const EMPTY_CASE: CaseT = {
   client_opponent_name: "",
   client_national_id: "",
   client_opponent_national_id: "",
+  client_phone_number: "",
+  opponent_phone_number: "",
   client_role: "مدعي",
   client_type: "",
   case_type: "",
   case_degree: "",
+  poa_number: "",
+  notary_office: "",
   court_name: "",
   court_circuit: "",
   latest_court_session_date: "",
@@ -165,6 +168,7 @@ export default function CaseForm({
       ...prev,
       client_name: newClient.name,
       client_national_id: newClient.national_id || "",
+      client_phone_number: newClient.phone_number || "",
       client_type: newClient.client_type || "",
     }));
     setErrors((prev) => ({ ...prev, client_name: "" }));
@@ -207,6 +211,7 @@ export default function CaseForm({
       ...prev,
       client_name: client.name,
       client_national_id: client.national_id || "",
+      client_phone_number: client.phone_number || "",
       client_type: client.client_type || "",
     }));
     setErrors((prev) => ({ ...prev, client_name: "" }));
@@ -218,6 +223,7 @@ export default function CaseForm({
       ...prev,
       client_name: "",
       client_national_id: "",
+      client_phone_number: "",
       client_type: "",
     }));
   };
@@ -296,6 +302,17 @@ export default function CaseForm({
       }
 
       if (
+        caseDetails.client_phone_number &&
+        caseDetails.client_phone_number.trim() &&
+        !/^\d{11}$/.test(caseDetails.client_phone_number.trim())
+      ) {
+        newErrors.client_phone_number = "رقم الهاتف غير صحيح، يجب أن يتكون من 11 رقماً";
+        valid = false;
+      } else {
+        delete newErrors.client_phone_number;
+      }
+
+      if (
         caseDetails.client_opponent_national_id &&
         caseDetails.client_opponent_national_id.trim() &&
         !/^\d{14}$/.test(caseDetails.client_opponent_national_id.trim())
@@ -304,6 +321,17 @@ export default function CaseForm({
         valid = false;
       } else {
         delete newErrors.client_opponent_national_id;
+      }
+
+      if (
+        caseDetails.opponent_phone_number &&
+        caseDetails.opponent_phone_number.trim() &&
+        !/^\d{11}$/.test(caseDetails.opponent_phone_number.trim())
+      ) {
+        newErrors.opponent_phone_number = "رقم الهاتف غير صحيح، يجب أن يتكون من 11 رقماً";
+        valid = false;
+      } else {
+        delete newErrors.opponent_phone_number;
       }
 
       setErrors(newErrors);
@@ -361,11 +389,16 @@ export default function CaseForm({
       client_national_id: caseDetails.client_national_id?.trim() || null,
       client_opponent_national_id:
         caseDetails.client_opponent_national_id?.trim() || null,
+      client_phone_number: caseDetails.client_phone_number?.trim() || null,
+      opponent_phone_number:
+        caseDetails.opponent_phone_number?.trim() || null,
       client_role: caseDetails.client_role?.trim() || null,
       assigned_lawyer_id: caseDetails.assigned_lawyer_id?.trim() || null,
       case_degree: caseDetails.case_degree?.trim() || null,
       case_type: caseDetails.case_type?.trim() || null,
       client_type: caseDetails.client_type?.trim() || null,
+      poa_number: caseDetails.poa_number?.trim() || null,
+      notary_office: caseDetails.notary_office?.trim() || null,
       closed_at: caseDetails.closed_at || null,
       court_circuit: caseDetails.court_circuit?.trim() || null,
       court_name: caseDetails.court_name?.trim() || null,
@@ -386,13 +419,20 @@ export default function CaseForm({
         const field = error.path[0] as string;
         if (!fieldErrors[field]) fieldErrors[field] = error.message;
 
-        if (field === "case_number" || field === "case_year") {
+        if (
+          field === "case_number" ||
+          field === "case_year" ||
+          field === "poa_number" ||
+          field === "notary_office"
+        ) {
           firstErrorStep = Math.min(firstErrorStep, 1);
         } else if (
           field === "client_name" ||
           field === "client_opponent_name" ||
           field === "client_national_id" ||
-          field === "client_opponent_national_id"
+          field === "client_opponent_national_id" ||
+          field === "client_phone_number" ||
+          field === "opponent_phone_number"
         ) {
           firstErrorStep = Math.min(firstErrorStep, 2);
         } else if (field === "latest_court_session_date") {
@@ -561,6 +601,30 @@ export default function CaseForm({
                     onChangeText={(t) => handleChange("case_degree", t)}
                   />
                 </FieldWrapper>
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper label="رقم التوكيل (اختياري)" error={errors.poa_number}>
+                  <TextInput
+                    placeholder="مثال: 1234 ج لسنة 2026"
+                    placeholderTextColor="#9ca3af"
+                    style={styles.input}
+                    value={caseDetails.poa_number ?? ""}
+                    onChangeText={(t) => handleChange("poa_number", t)}
+                  />
+                </FieldWrapper>
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper label="مكتب التوثيق (اختياري)" error={errors.notary_office}>
+                  <TextInput
+                    placeholder="مثال: توثيق الأهرام النموذجي، توثيق مدينة نصر..."
+                    placeholderTextColor="#9ca3af"
+                    style={styles.input}
+                    value={caseDetails.notary_office ?? ""}
+                    onChangeText={(t) => handleChange("notary_office", t)}
+                  />
+                </FieldWrapper>
               </View>
             </View>
           )}
@@ -653,7 +717,9 @@ export default function CaseForm({
                           {caseDetails.client_name}
                         </Text>
 
-                        {(!!caseDetails.client_type || !!caseDetails.client_national_id) && (
+                        {(!!caseDetails.client_type ||
+                          !!caseDetails.client_national_id ||
+                          !!caseDetails.client_phone_number) && (
                           <View style={styles.selectedClientMetaRow}>
                             {!!caseDetails.client_type && (
                               <View style={styles.metaPill}>
@@ -668,6 +734,14 @@ export default function CaseForm({
                                 <Feather name="credit-card" size={11} color="#64748b" />
                                 <Text style={styles.metaPillText}>
                                   {caseDetails.client_national_id}
+                                </Text>
+                              </View>
+                            )}
+                            {!!caseDetails.client_phone_number && (
+                              <View style={styles.metaPill}>
+                                <Feather name="phone" size={11} color="#64748b" />
+                                <Text style={styles.metaPillText}>
+                                  {caseDetails.client_phone_number}
                                 </Text>
                               </View>
                             )}
@@ -738,6 +812,26 @@ export default function CaseForm({
 
                     <View style={styles.inCardDivider} />
 
+                    <FieldWrapper
+                      label="رقم الهاتف للموكل (اختياري)"
+                      error={errors.client_phone_number}
+                    >
+                      <TextInput
+                        placeholder="01012345678 (11 رقماً)"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="phone-pad"
+                        maxLength={11}
+                        style={[
+                          styles.input,
+                          errors.client_phone_number && styles.inputErrorBorder,
+                        ]}
+                        value={caseDetails.client_phone_number ?? ""}
+                        onChangeText={(t) => handleChange("client_phone_number", t)}
+                      />
+                    </FieldWrapper>
+
+                    <View style={styles.inCardDivider} />
+
                     <FieldWrapper label="نوع الموكل (اختياري)" error={errors.client_type}>
                       <TextInput
                         placeholder="مثال: فرد، شركة مساهمة، جهة حكومية..."
@@ -798,6 +892,28 @@ export default function CaseForm({
                     }
                   />
                 </FieldWrapper>
+
+                <View style={styles.inCardDivider} />
+
+                <FieldWrapper
+                  label="رقم الهاتف للخصم (اختياري)"
+                  error={errors.opponent_phone_number}
+                >
+                  <TextInput
+                    placeholder="01012345678 (11 رقماً)"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="phone-pad"
+                    maxLength={11}
+                    style={[
+                      styles.input,
+                      errors.opponent_phone_number && styles.inputErrorBorder,
+                    ]}
+                    value={caseDetails.opponent_phone_number ?? ""}
+                    onChangeText={(t) =>
+                      handleChange("opponent_phone_number", t)
+                    }
+                  />
+                </FieldWrapper>
               </View>
             </View>
           )}
@@ -809,7 +925,7 @@ export default function CaseForm({
               <View style={styles.card}>
                 <FieldWrapper label="اسم المحكمة" error={errors.court_name}>
                   <TextInput
-                    placeholder="مثال: محكمة شمال القاهرة الابتدائية"
+                    placeholder="أدخل اسم المحكمة"
                     placeholderTextColor="#9ca3af"
                     style={styles.input}
                     value={caseDetails.court_name ?? ""}
@@ -821,7 +937,7 @@ export default function CaseForm({
 
                 <FieldWrapper label="الدائرة / رقم الدائرة" error={errors.court_circuit}>
                   <TextInput
-                    placeholder="مثال: الدائرة 3 مدني كلي"
+                    placeholder="أدخل اسم أو رقم الدائرة"
                     placeholderTextColor="#9ca3af"
                     style={styles.input}
                     value={caseDetails.court_circuit ?? ""}
@@ -1042,6 +1158,17 @@ export default function CaseForm({
                   </View>
                 )}
 
+                {(!!caseDetails.poa_number || !!caseDetails.notary_office) && (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryValue}>
+                      {[caseDetails.poa_number, caseDetails.notary_office]
+                        .filter(Boolean)
+                        .join(" - ")}
+                    </Text>
+                    <Text style={styles.summaryLabel}>التوكيل:</Text>
+                  </View>
+                )}
+
                 <View style={styles.summaryDivider} />
 
                 <View style={styles.summaryRow}>
@@ -1051,12 +1178,26 @@ export default function CaseForm({
                   <Text style={styles.summaryLabel}>الموكل:</Text>
                 </View>
 
+                {!!caseDetails.client_phone_number && (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryValue}>{caseDetails.client_phone_number}</Text>
+                    <Text style={styles.summaryLabel}>هاتف الموكل:</Text>
+                  </View>
+                )}
+
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryValue}>
                     {caseDetails.client_opponent_name}
                   </Text>
                   <Text style={styles.summaryLabel}>الخصم:</Text>
                 </View>
+
+                {!!caseDetails.opponent_phone_number && (
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryValue}>{caseDetails.opponent_phone_number}</Text>
+                    <Text style={styles.summaryLabel}>هاتف الخصم:</Text>
+                  </View>
+                )}
 
                 {(!!caseDetails.court_name || !!caseDetails.court_circuit) && (
                   <>
