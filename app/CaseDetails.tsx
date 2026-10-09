@@ -210,6 +210,18 @@ export default function CaseDetails() {
             <Field label="نوع القضية" value={caseDetails.case_type} />
             <View style={styles.fieldDivider} />
             <Field label="الدرجة" value={caseDetails.case_degree} />
+            {caseDetails.poa_number ? (
+              <>
+                <View style={styles.fieldDivider} />
+                <Field label="رقم التوكيل" value={caseDetails.poa_number} />
+              </>
+            ) : null}
+            {caseDetails.notary_office ? (
+              <>
+                <View style={styles.fieldDivider} />
+                <Field label="مكتب التوثيق" value={caseDetails.notary_office} />
+              </>
+            ) : null}
           </View>
 
           <SectionHeader label="بيانات الموكل" />
@@ -217,6 +229,15 @@ export default function CaseDetails() {
             <Field label="الاسم" value={caseDetails.client_name} />
             <View style={styles.fieldDivider} />
             <Field label="الصفة" value={caseDetails.client_role} />
+            {caseDetails.client_phone_number ? (
+              <>
+                <View style={styles.fieldDivider} />
+                <Field
+                  label="رقم الهاتف"
+                  value={caseDetails.client_phone_number}
+                />
+              </>
+            ) : null}
             <View style={styles.fieldDivider} />
             <Field
               label="الرقم القومي"
@@ -235,6 +256,15 @@ export default function CaseDetails() {
             <Field label="الاسم" value={caseDetails.client_opponent_name} />
             <View style={styles.fieldDivider} />
             <Field label="الصفة" value={caseDetails.client_opponent_role} />
+            {caseDetails.opponent_phone_number ? (
+              <>
+                <View style={styles.fieldDivider} />
+                <Field
+                  label="رقم الهاتف"
+                  value={caseDetails.opponent_phone_number}
+                />
+              </>
+            ) : null}
             <View style={styles.fieldDivider} />
             <Field
               label="الرقم القومي"

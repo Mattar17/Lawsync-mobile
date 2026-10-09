@@ -50,12 +50,17 @@ type CaseT = {
   title?: string | null;
   client_national_id?: string | null;
   client_opponent_national_id?: string | null;
+  client_phone_number?: string | null;
+  opponent_phone_number?: string | null;
   client_role?: string | null;
   client_opponent_role?: string | null;
 
   case_type?: string | null;
   case_degree?: string | null;
   client_type?: string | null;
+
+  poa_number?: string | null;
+  notary_office?: string | null;
 
   assigned_lawyer_id?: string | null;
   closed_at?: string | null;

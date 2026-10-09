@@ -49,7 +49,7 @@ export default function RootLayout() {
       />
       <Stack.Screen
         name="Documents"
-        options={{ title: "إنشاء المستندات", headerShown: false }}
+        options={{ title: "النماذج القانونية", headerShown: false }}
       />
       <Stack.Screen
         name="workspace/Cases"

@@ -24,10 +24,24 @@ export const createCaseSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal("")),
+  client_phone_number: z
+    .string()
+    .regex(/^\d{11}$/, "رقم الهاتف غير صحيح، يجب أن يتكون من 11 رقماً")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  opponent_phone_number: z
+    .string()
+    .regex(/^\d{11}$/, "رقم الهاتف غير صحيح، يجب أن يتكون من 11 رقماً")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   client_role: z.string().optional().nullable().or(z.literal("")),
   case_type: z.string().optional().nullable().or(z.literal("")),
   case_degree: z.string().optional().nullable().or(z.literal("")),
   client_type: z.string().optional().nullable().or(z.literal("")),
+  poa_number: z.string().optional().nullable().or(z.literal("")),
+  notary_office: z.string().optional().nullable().or(z.literal("")),
   assigned_lawyer_id: z.string().uuid("معرف المحامي غير صالح").optional().nullable(),
   closed_at: z.string().optional().nullable(),
   court_circuit: z.string().optional().nullable(),

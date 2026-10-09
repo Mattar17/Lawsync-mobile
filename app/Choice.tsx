@@ -41,7 +41,7 @@ const choices = [
   },
   {
     id: "library",
-    title: "المكتبة القضائية",
+    title: "المكتبة القانونية",
     description: "تصفح الأقسام والكتب القضائية والقانونية",
     icon: "book-open" as const,
     color: "#0d1b2a",
@@ -51,7 +51,7 @@ const choices = [
   },
   {
     id: "documents",
-    title: "إنشاء المستندات",
+    title: "النماذج القانونية",
     description: "أنشئ مستنداتك القانونية بسهولة",
     icon: "file-text" as const,
     color: "#0d1b2a",
