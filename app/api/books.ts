@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, uploadRequest } from "./client";
 
 export type BookCategory = { id: string; name: string; created_at?: string };
 export type Book = {
@@ -7,6 +7,8 @@ export type Book = {
   title: string;
   description?: string | null;
   file_ext?: string;
+  file_size_bytes?: number | null;
+  created_at?: string;
 };
 
 export const getAllCategories = () =>
@@ -20,6 +22,8 @@ export const createCategory = (form: { name: string }) =>
     method: "POST",
     body: JSON.stringify(form),
   });
+export const uploadBook = (formData: FormData) =>
+  uploadRequest<Book>("/api/books/upload", formData);
 export const deleteCategory = (categoryId: string) =>
   request<void>(`/api/books/category/${categoryId}`, { method: "DELETE" });
 export const deleteBook = (bookId: string) =>
@@ -32,3 +36,4 @@ export const updateBookInfo = (
     method: "PATCH",
     body: JSON.stringify(form),
   });
+

@@ -25,17 +25,17 @@ export const getAllVerificationRequests = (params?: {
   page?: number;
   limit?: number;
 }) => {
-  const query = new URLSearchParams();
+  const parts: string[] = [];
   if (params?.status && params.status !== "all") {
-    query.append("status", params.status);
+    parts.push(`status=${encodeURIComponent(params.status)}`);
   }
   if (params?.page) {
-    query.append("page", params.page.toString());
+    parts.push(`page=${encodeURIComponent(String(params.page))}`);
   }
   if (params?.limit) {
-    query.append("limit", params.limit.toString());
+    parts.push(`limit=${encodeURIComponent(String(params.limit))}`);
   }
-  const queryString = query.toString();
+  const queryString = parts.join("&");
   const path = `/api/admin/verification_requests${queryString ? `?${queryString}` : ""}`;
   return request<VerificationRequestItem[]>(path);
 };
@@ -84,17 +84,17 @@ export const getAllSubscriptionRequests = (params?: {
   page?: number;
   limit?: number;
 }) => {
-  const query = new URLSearchParams();
+  const parts: string[] = [];
   if (params?.status && params.status !== "all") {
-    query.append("status", params.status);
+    parts.push(`status=${encodeURIComponent(params.status)}`);
   }
   if (params?.page) {
-    query.append("page", params.page.toString());
+    parts.push(`page=${encodeURIComponent(String(params.page))}`);
   }
   if (params?.limit) {
-    query.append("limit", params.limit.toString());
+    parts.push(`limit=${encodeURIComponent(String(params.limit))}`);
   }
-  const queryString = query.toString();
+  const queryString = parts.join("&");
   const path = `/api/admin/subscription_requests${queryString ? `?${queryString}` : ""}`;
   return request<SubscriptionRequestItem[]>(path);
 };
