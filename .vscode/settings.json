@@ -5,5 +5,12 @@
     "source.sortMembers": "explicit"
   },
   "debug.openDebug": "neverOpen",
-  "terminal.integrated.inheritEnv": false
+  "terminal.integrated.inheritEnv": false,
+  "task.allowAutomaticTasks": true,
+  "tasks": {
+    "label": "lint on open",
+    "type": "shell",
+    "command": "npm run lint",
+    "runOn": "folderOpen"
+  }
 }
