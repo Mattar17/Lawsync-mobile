@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, uploadRequest } from "./client";
 
 export type VerificationRequestItem = {
   id: string;
@@ -115,6 +115,32 @@ export const answerSubscriptionRequest = (
     {
       method: "POST",
       data: body,
+    },
+  );
+
+export type AdminTemplateItem = {
+  id: string;
+  title: string;
+  raw_arabic_text?: string | null;
+  handlebars_content?: string | null;
+  placeholders: any[] | null;
+  pdf_storage_path?: string | null;
+  template_type?: string | null;
+  is_app_template?: boolean;
+  created_at: string;
+};
+
+export const getAdminAppTemplates = () =>
+  request<AdminTemplateItem[]>("/api/admin/app-templates");
+
+export const createAdminAppTemplate = (formData: FormData) =>
+  uploadRequest<AdminTemplateItem>("/api/admin/app-templates", formData);
+
+export const deleteAdminAppTemplate = (id: string) =>
+  request<{ success: boolean; message: string }>(
+    `/api/admin/app-templates/${id}`,
+    {
+      method: "DELETE",
     },
   );
 

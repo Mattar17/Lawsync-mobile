@@ -7,6 +7,7 @@ import BooksManagementSection from "./components/admin/BooksManagementSection";
 import LawCodesManagementSection from "./components/admin/LawCodesManagementSection";
 import SubscriptionRequestsSection from "./components/admin/SubscriptionRequestsSection";
 import VerificationRequestsSection from "./components/admin/VerificationRequestsSection";
+import TemplatesManagementSection from "./components/admin/TemplatesManagementSection";
 import { adminStyles as styles } from "./components/admin/adminShared";
 import { useUserStore } from "./zustandStore/userStore";
 
@@ -15,7 +16,8 @@ type AdminSection =
   | "verification"
   | "subscription"
   | "books"
-  | "laws";
+  | "laws"
+  | "templates";
 
 export default function AdminDashboard() {
   const user = useUserStore((state) => state.user);
@@ -167,6 +169,32 @@ export default function AdminDashboard() {
               </View>
               <Feather name="chevron-left" size={20} color="#b8975a" />
             </TouchableOpacity>
+            {/* Card 5: Legal Templates (إدارة وإنشاء النماذج القانونية) */}
+            <TouchableOpacity
+              style={styles.adminFeatureCard}
+              activeOpacity={0.85}
+              onPress={() => setActiveSection("templates")}
+            >
+              <View
+                style={[
+                  styles.featureCardIcon,
+                  { backgroundColor: "#0e2038" },
+                ]}
+              >
+                <Feather name="file-text" size={24} color="#b8975a" />
+              </View>
+              <View style={styles.featureCardCopy}>
+                <View style={styles.featureCardTitleRow}>
+                  <Text style={styles.featureCardTitle}>
+                    النماذج والقوالب العامة
+                  </Text>
+                </View>
+                <Text style={styles.featureCardDesc}>
+                  إضافة قوالب رسمية عامة للتطبيق، رفع ملفات PDF وتحويلها لقوالب، وحذف النماذج
+                </Text>
+              </View>
+              <Feather name="chevron-left" size={20} color="#b8975a" />
+            </TouchableOpacity>
           </View>
         </ScrollView>
       )}
@@ -193,6 +221,13 @@ export default function AdminDashboard() {
       {/* ─── 5. LAW CODES (الأكواد القانونية) SECTION ─────────────────────── */}
       {activeSection === "laws" && (
         <LawCodesManagementSection
+          onBack={() => setActiveSection("overview")}
+        />
+      )}
+
+      {/* ─── 6. LEGAL TEMPLATES SECTION ───────────────────────────────────── */}
+      {activeSection === "templates" && (
+        <TemplatesManagementSection
           onBack={() => setActiveSection("overview")}
         />
       )}

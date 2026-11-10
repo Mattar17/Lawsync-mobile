@@ -2,10 +2,10 @@ import React from "react";
 import {
   ActivityIndicator,
   ImageBackground,
-  StatusBar,
   StyleSheet,
   View,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 
 type Props = {
   showIndicator?: boolean;
@@ -14,11 +14,7 @@ type Props = {
 export default function LoadingScreen({ showIndicator = true }: Props) {
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar style="light" />
       <ImageBackground
         source={require("@/assets/images/Meezan-loading-screen.jpg")}
         style={styles.background}

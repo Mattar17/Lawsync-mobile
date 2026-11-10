@@ -135,7 +135,7 @@ export default function CaseDetails() {
       <SafeAreaView style={styles.root} edges={["top"]}>
         {/* ── header ── */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.iconBtn} onPress={router.back}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
             <Feather name="arrow-right" size={20} color="#374151" />
           </TouchableOpacity>
 
