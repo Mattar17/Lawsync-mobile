@@ -118,6 +118,8 @@ export const answerSubscriptionRequest = (
     },
   );
 
+import type { TemplateCategory } from "./templates";
+
 export type AdminTemplateItem = {
   id: string;
   title: string;
@@ -127,18 +129,58 @@ export type AdminTemplateItem = {
   pdf_storage_path?: string | null;
   template_type?: string | null;
   is_app_template?: boolean;
+  category_id?: string | null;
+  category?: TemplateCategory | null;
+  template_categories?: TemplateCategory | null;
   created_at: string;
 };
 
-export const getAdminAppTemplates = () =>
-  request<AdminTemplateItem[]>("/api/admin/app-templates");
+export const getAdminAppTemplates = (categoryId?: string) => {
+  const query = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : "";
+  return request<AdminTemplateItem[]>(`/api/admin/app-templates${query}`);
+};
 
 export const createAdminAppTemplate = (formData: FormData) =>
   uploadRequest<AdminTemplateItem>("/api/admin/app-templates", formData);
 
+export const updateAdminAppTemplate = (
+  id: string,
+  data: { title?: string; categoryId?: string; placeholders?: any[] },
+) =>
+  request<AdminTemplateItem>(`/api/admin/app-templates/${id}`, {
+    method: "PUT",
+    data,
+  });
+
 export const deleteAdminAppTemplate = (id: string) =>
   request<{ success: boolean; message: string }>(
     `/api/admin/app-templates/${id}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+export const getAdminTemplateCategories = () =>
+  request<TemplateCategory[]>("/api/template-categories");
+
+export const createAdminTemplateCategory = (data: { name: string; description?: string }) =>
+  request<TemplateCategory>("/api/admin/template-categories", {
+    method: "POST",
+    data,
+  });
+
+export const updateAdminTemplateCategory = (
+  id: string,
+  data: { name?: string; description?: string },
+) =>
+  request<TemplateCategory>(`/api/admin/template-categories/${id}`, {
+    method: "PUT",
+    data,
+  });
+
+export const deleteAdminTemplateCategory = (id: string) =>
+  request<{ success: boolean; message: string }>(
+    `/api/admin/template-categories/${id}`,
     {
       method: "DELETE",
     },

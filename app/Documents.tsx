@@ -100,6 +100,7 @@ export default function DocumentsScreen() {
   const [isEditingText, setIsEditingText] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
+  const [generatedDocxUrl, setGeneratedDocxUrl] = useState<string | null>(null);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
 
   // Create Template Modal
@@ -366,30 +367,18 @@ export default function DocumentsScreen() {
     }
   };
 
-  // Fallback text generator in legal style matching Image 2
+  // Fallback text generator when no HTML preview is returned
   const generateFallbackDocumentText = () => {
-    const oppName = formValues.اسم_الخصم || "[اسم الخصم]";
-    const oppAddress = formValues.عنوان_الخصم || "[عنوان الخصم]";
-    const clientName = formValues.اسم_الموكل || formValues.اسم_الطالب || user?.name || "علي";
-    const officeAddr = formValues.عنوان_مكتب_المحامي || office?.address || "السادات";
-    const lawyerName = formValues.اسم_المحامي || user?.name || "علي المحامي";
-    const caseNum = formValues.رقم_الدعوى || "220 لسنة 2026";
-
-    return `إنه في يوم الموافق / /
-
-بناء على طلب السيد/ ${clientName}، المقيم في ${officeAddr}، ومحله المختار مكتب الأستاذ/ ${lawyerName}، الكائن في ${officeAddr}.
-
-أنا محضر محكمة قد انتقلت في التاريخ المذكور أعلاه إلى محل إقامة:
-
-السيد/ ${oppName}، المقيم في ${oppAddress}.
-
-مخاطبًا مع/
-
-وأعلنته بالآتي
-
-أقامت الطالبة الدعوى رقم ${caseNum} ضد المعلن إليه، وقد تحدد لنظرها جلسة 2026/07/21، وبتلك الجلسة لم يحضر المعلن إليه أو وكيل عنه.
-
-لذلك قررت الهيئة الموقرة تأجيل نظر الدعوى لجلسة 2026/09/21 لإعادة الإعلان.`;
+    let baseText = (selectedTemplate as any)?.raw_arabic_text || "";
+    if (baseText && baseText.trim()) {
+      for (const [k, v] of Object.entries(formValues)) {
+        if (!v) continue;
+        const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        baseText = baseText.replace(new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}|\\b${escaped}\\b`, "g"), String(v));
+      }
+      return baseText;
+    }
+    return `نموذج: ${selectedTemplate?.title || "مستند قانوني"}\n\nسيتم تصدير وطباعة المستند وفق النموذج الرسمي الكامل والمطابق للملف الأصلي.`;
   };
 
   // Step 5: Generate Final PDF
@@ -398,8 +387,8 @@ export default function DocumentsScreen() {
 
     setGeneratingPdf(true);
     try {
-      // Send either custom edited HTML/text or original form values
-      const customHtmlToSend = isEditingText || documentText ? wrapTextInLegalHtml(documentText) : undefined;
+      // Send custom edited HTML ONLY if the user explicitly enabled text editing mode
+      const customHtmlToSend = isEditingText && documentText ? wrapTextInLegalHtml(documentText) : undefined;
 
       const response = await generateDocument(selectedTemplate.id, formValues, {
         customHtml: customHtmlToSend,
@@ -419,6 +408,8 @@ export default function DocumentsScreen() {
       }
 
       setGeneratedPdfUrl(pdfUrl);
+      const docxUrl = response?.docxUrl || response?.data?.docxUrl || null;
+      setGeneratedDocxUrl(docxUrl);
       setSuccessModalVisible(true);
     } catch (err: any) {
       Alert.alert("فشل التوليد", err.message || "تعذر توليد ملف الـ PDF وحفظه");
@@ -437,11 +428,15 @@ export default function DocumentsScreen() {
     return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><style>body{font-family:'Traditional Arabic',Tahoma,Arial,sans-serif;direction:rtl;padding:25mm 20mm;color:#111;}</style></head><body>${paragraphs}</body></html>`;
   };
 
-  // Pick PDF file for uploading new template
+  // Pick Word (.docx) or PDF file for uploading new template
   const pickPdfFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ["application/pdf"],
+        type: [
+          "application/pdf",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/msword",
+        ],
         copyToCacheDirectory: true,
       });
 
@@ -966,16 +961,8 @@ export default function DocumentsScreen() {
             showsVerticalScrollIndicator={false}
           >
 
-            {/* Other Dynamic Template Fields */}
-            {getPlaceholderList(selectedTemplate)
-              .filter(
-                ({ key }) =>
-                  key !== "عنوان_مكتب_المحامي" &&
-                  key !== "اسم_الخصم" &&
-                  key !== "عنوان_الخصم" &&
-                  key !== "رقم_الدعوى"
-              )
-              .map(({ key, label }) => {
+            {/* All Template Fields */}
+            {getPlaceholderList(selectedTemplate).map(({ key, label }) => {
                 if (isLogoField(key)) {
                   return (
                     <View key={key} style={styles.formSectionBox}>
@@ -1307,6 +1294,18 @@ export default function DocumentsScreen() {
               <Text style={styles.viewPdfSuccessBtnText}>عرض وتحميل ملف PDF</Text>
             </TouchableOpacity>
 
+            {generatedDocxUrl && (
+              <TouchableOpacity
+                style={[styles.viewPdfSuccessBtn, { marginTop: 10, borderColor: "#2b579a" }]}
+                onPress={() => {
+                  if (generatedDocxUrl) Linking.openURL(generatedDocxUrl);
+                }}
+              >
+                <Feather name="file-text" size={18} color="#2b579a" />
+                <Text style={[styles.viewPdfSuccessBtnText, { color: "#2b579a" }]}>تحميل ملف Word (.docx)</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={styles.closeSuccessBtn}
               onPress={() => {
@@ -1383,7 +1382,7 @@ export default function DocumentsScreen() {
                 <TouchableOpacity style={styles.uploadDottedBox} onPress={pickPdfFile}>
                   <Feather name="upload-cloud" size={32} color="#b8975a" />
                   <Text style={styles.uploadDottedBoxTitle}>
-                    {selectedFile ? selectedFile.name : "اضغط لاختيار ملف PDF من الجهاز"}
+                    {selectedFile ? selectedFile.name : "اضغط لاختيار ملف Word (.docx) أو PDF من الجهاز"}
                   </Text>
                 </TouchableOpacity>
               ) : (

@@ -8,6 +8,15 @@ export type PlaceholderItem =
       type?: string;
     };
 
+export type TemplateCategory = {
+  id: string;
+  name: string;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  templatesCount?: number;
+};
+
 export type LegalTemplate = {
   id: string;
   title: string;
@@ -16,7 +25,8 @@ export type LegalTemplate = {
   placeholders: PlaceholderItem[] | null;
   template_type?: string;
   is_app_template?: boolean;
-  category?: string;
+  category_id?: string | null;
+  category?: TemplateCategory | string | null;
   created_at: string;
 };
 
@@ -68,10 +78,17 @@ export const deleteTemplate = (id: string) =>
   });
 
 /**
+ * Fetches all template categories
+ */
+export const getTemplateCategories = () =>
+  request<TemplateCategory[]>("/api/template-categories");
+
+/**
  * Fetches all available legal templates (normalizes grouped or array responses)
  */
-export const getAllTemplates = async (): Promise<LegalTemplate[]> => {
-  const raw = await request<any>("/api/templates");
+export const getAllTemplates = async (categoryId?: string): Promise<LegalTemplate[]> => {
+  const query = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : "";
+  const raw = await request<any>(`/api/templates${query}`);
   if (!raw) return [];
 
   const res = raw.data || raw;
